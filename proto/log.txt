@@ -1,4 +1,0 @@
-nothing
-$(rm -rf sandbox && mkdir sandbox)
-$(gcc prog.c -o sandbox/out)
-$(./sandbox/out)

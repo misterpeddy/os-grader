@@ -1,48 +1,80 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define DEBUG 1 
 
 #define SANDBOX "sandbox"
-#define LOGFILE "log.txt"
-#define MAX_BUF 512
+#define LOGFILE_SUFFIX "log.txt"
+#define MAX_COMMAND_LEN 512
+#define MAX_FILENAME_LEN 128
 #define TTY "/dev/tty"
 
-int main(int argc, char **argv) {
-	if (argc < 2) {
-		printf("Usage: %s <filename>\n", argv[0]);
+void init_sandbox(char *user) 
+{	
+	char command[MAX_COMMAND_LEN];
+	memset(&command, 0, MAX_COMMAND_LEN);
+	sprintf(&command, "rm -rf %s && mkdir %s", user, user);
+	system(command);
+
+	// Log stdout
+	char logfile[MAX_FILENAME_LEN];
+	sprintf(&logfile, "%s/%s_%s", user, user, LOGFILE_SUFFIX);
+	freopen(logfile, "w", stdout);
+	if (DEBUG) printf("Redirecting stdout output\n$(%s)\n", command);
+}
+
+void compile_source(char *filename, char *user) 
+{	
+	char command[MAX_COMMAND_LEN];
+	memset(&command, 0, MAX_COMMAND_LEN);
+	sprintf(&command, "gcc %s -o %s/out", filename, user);
+	if (DEBUG) printf("$(%s)\n", command);
+	system(command);
+}
+
+void run_program(char *user) 
+{
+	char command[MAX_COMMAND_LEN];
+	memset(&command, 0, MAX_COMMAND_LEN);
+	sprintf(&command, "./%s/out", user);
+	if (DEBUG) printf("$(%s)\n", command);
+	system(command);	
+}
+
+void clean_up() {
+	if (DEBUG) printf("Finishing stdout redirect\n");
+	fflush(stdout);
+	freopen(TTY, "a", stdout);
+}
+
+int main(int argc, char **argv) 
+{
+
+	// Check arguments
+	if (argc != 3) {
+		printf("Usage: %s <filename> <username>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	
-	char command[MAX_BUF];
+	// Capture arguments
+	char *filename = argv[1];
+	char *user = argv[2];
 
 	if (DEBUG) printf("****Executor Started****\n");
 
-	// Capture output
-	freopen(LOGFILE, "w", stdout);
-
 	// Create sandbox
-	memset(&command, 0, MAX_BUF);
-	sprintf(&command, "rm -rf %s && mkdir %s", SANDBOX, SANDBOX);
-	if (DEBUG) printf("$(%s)\n", command);
-	system(command);
+	init_sandbox(user);
 
-	// Compile submittedsource code
-	memset(&command, 0, MAX_BUF);
-	sprintf(&command, "gcc %s -o %s/out", argv[1], SANDBOX);
-	if (DEBUG) printf("$(%s)\n", command);
-	system(command);
+	// Compile submitted source code
+	compile_source(filename, user);
 
 	// Run executable
-	memset(&command, 0, MAX_BUF);
-	sprintf(&command, "./%s/out", SANDBOX);
-	if (DEBUG) printf("$(%s)\n", command);
-	system(command);
-	
+	run_program(user);
+
 	// Restore stdout
-	fflush(stdout);
-	freopen(TTY, "a", stdout);
+	clean_up();
 
 	if (DEBUG) printf("****Executor Finished****\n");
 }

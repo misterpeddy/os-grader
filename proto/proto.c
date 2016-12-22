@@ -5,7 +5,8 @@
 #define DEBUG 1
 #define EXECUTOR "executor"
 
-int main() {
+int main() 
+{
 	char filename[16];
 	strcpy(&filename, "prog.c");
 	char *exec_args[] = {EXECUTOR, &filename, NULL};
