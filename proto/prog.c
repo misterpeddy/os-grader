@@ -1,6 +1,11 @@
-//#include <stdio.h>
+#include <stdio.h>
 
 int main() 
 {
-	printf("nothing\n");
+	char buffer[128];
+	printf("$");
+	fgets(buffer, 128, stdin);
+	printf("(%d)[%s]\n", strlen(buffer), buffer);
+	fgets(buffer, 128, stdin);
+	printf("(%d)[%s]\n", strlen(buffer), buffer);
 }

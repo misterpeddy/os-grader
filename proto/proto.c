@@ -8,9 +8,10 @@
 int main() 
 {
 	int fd[2];
-	char filename[16];
+	char filename[32];
 	char fd_w[32];
 	char user[8];
+	char input[32];
 
 	// Create shared pipe, fd[0] for reading, fd[1] for writing
 	pipe(fd);
@@ -21,6 +22,9 @@ int main()
 	
 	// Capture username from argument
 	strcpy(&user, "pp5nv");
+	
+	// Capture input filename
+	strcpy(&input, "input.txt");
 
 	// Set arguments and environment variables
 	char *exec_args[] = {EXECUTOR, &filename, user, fd_w, NULL};

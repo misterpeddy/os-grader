@@ -15,7 +15,7 @@
 #define MAX_COMMAND_LEN 512
 #define MAX_FILENAME_LEN 128
 #define TTY "/dev/tty"
-#define STAR "*****"
+#define FILLER "*****"
 #define DELIM 0x2A
 
 const char COMP_AOK[] = "COMP_AOK\0";
@@ -28,8 +28,9 @@ char err_file[MAX_FILENAME_LEN];
 
 void init_sandbox(char *user) 
 {	
-	if (DEBUG) printf("%sExecutor Started%s\n", STAR, STAR);
+	if (DEBUG) printf("%sExecutor Started%s\n", FILLER, FILLER);
 	
+	// Make empty directory for sandbox
 	char command[MAX_COMMAND_LEN];
 	memset(&command, 0, MAX_COMMAND_LEN);
 	sprintf(&command, "rm -rf %s && mkdir %s", user, user);
@@ -45,7 +46,7 @@ void init_sandbox(char *user)
 
 	if (DEBUG) 
 	{
-		printf("%sRedirecting stdout output%s\n", STAR, STAR);
+		printf("%sRedirecting stdout output%s\n", FILLER, FILLER);
 		printf("$(%s)\n", command);
 	}
 }
@@ -56,7 +57,7 @@ void init_sandbox(char *user)
 */
 int compile_source(char *filename, char *user) 
 {	
-	if (DEBUG) printf("\n%sCompiling %s for %s%s\n", STAR, filename, user, STAR);
+	if (DEBUG) printf("\n%sCompiling %s for %s%s\n", FILLER, filename, user, FILLER);
 
 	// Compile source
 	char command[MAX_COMMAND_LEN];
@@ -65,18 +66,18 @@ int compile_source(char *filename, char *user)
 	if (DEBUG) printf("$(%s)\n", command);
 	system(command);
 	
+	if (DEBUG) printf("%sFinished compiling %s for %s%s\n\n", FILLER, filename, user, FILLER);
+
 	// Read error log file stats
 	struct stat log_stat;
 	stat(err_file, &log_stat);
 	
-	if (DEBUG) printf("%sFinished compiling %s for %s%s\n\n", STAR, filename, user, STAR);
-
 	return log_stat.st_size;
 }
 
-void run_program(char *user) 
+void run_program(char *user, char *input_file) 
 {
-	if (DEBUG) printf("\n%sRunning %s/%s%s\n", STAR, user, BIN, STAR);
+	if (DEBUG) printf("\n%sRunning %s/%s%s\n", FILLER, user, BIN, FILLER);
 
 	// Redirect output to OUT
 	char logfile[MAX_FILENAME_LEN];
@@ -86,7 +87,13 @@ void run_program(char *user)
 	// Run the binary
 	char command[MAX_COMMAND_LEN];
 	memset(&command, 0, MAX_COMMAND_LEN);
-	sprintf(&command, "./%s/%s", user, BIN);
+	if (input_file)
+	{
+		sprintf(&command, "./%s/%s < %s", user, BIN, input_file);
+	} else 
+	{
+		sprintf(&command, "./%s/%s", user, BIN);
+	}
 	system(command);	
 
 	// Redirect output to logfile
@@ -95,21 +102,24 @@ void run_program(char *user)
 	freopen(logfile, "a", stdout);
 	
 	if (DEBUG) printf("$(%s)\n", command);
-	if (DEBUG) printf("%sFinished running %s/%s%s\n\n", STAR, user, BIN, STAR);
+	if (DEBUG) printf("%sFinished running %s/%s%s\n\n", FILLER, user, BIN, FILLER);
 }
 
 void clean_up() 
 {
-	if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", STAR, STAR);
+	if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", FILLER, FILLER);
 	fflush(stdout);
 	fflush(stderr);
 	freopen(TTY, "a", stderr);
 	freopen(TTY, "a", stdout);
-	if (DEBUG) printf("%sExecutor Finished%s\n", STAR, STAR);
+	if (DEBUG) printf("%sExecutor Finished%s\n", FILLER, FILLER);
 }
 
 /********************* Helpers ***********************/
-
+/*
+** Writes acknowledgement (<user><delimiter><filename><delimiter><ack_code>\0)
+** onto the pipe.
+*/
 void send_ack(int pipe_fd, const char *ack_str, char *user, char *filename) {
 	// Allocate space for the message
 	char *buf = (char *) malloc(strlen(ack_str) + strlen(user) + strlen(filename) + 3);
@@ -134,36 +144,37 @@ int main(int argc, char **argv)
 {
 
 	// Check arguments
-	if (argc != 4) {
-		printf("Usage: %s <filename> <username> <pipe fd>\n", argv[0]);
+	if (argc < 4 || argc > 5) {
+		printf("Usage: %s <source file> <username> <pipe fd> [<input file>]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	
 	// Capture arguments
-	char *filename = argv[1];
+	char *source_file = argv[1];
 	char *user = argv[2];
 	int pipe_fd = atoi(argv[3]);
+	char *input_file = (argc == 5) ? argv[4] : NULL;
 
 	// Create sandbox
 	init_sandbox(user);
 
 	// Compile submitted source code 
-	int comp_result = compile_source(filename, user);
+	int comp_result = compile_source(source_file, user);
 
 	// Write compilation result code to pipe, exit if errored
 	if (comp_result)
 	{
-		send_ack(pipe_fd, COMP_ERR, user, filename);
+		send_ack(pipe_fd, COMP_ERR, user, source_file);
 		clean_up();
 		exit(1);
 	}
 	else
 	{
-		send_ack(pipe_fd, COMP_AOK, user, filename);
+		send_ack(pipe_fd, COMP_AOK, user, source_file);
 	}
 
 	// Run executable
-	run_program(user);
+	run_program(user, input_file);
 
 	// Restore stdout and stderr 
 	clean_up();
