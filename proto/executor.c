@@ -10,12 +10,13 @@
 #define SANDBOX "sandbox"
 #define LOGFILE_SUFFIX "log.txt"
 #define ERRORFILE_SUFFIX "error.txt"
-#define BIN "bin"
 #define OUTFILE_SUFFIX "out.txt"
+#define BIN "bin"
 #define MAX_COMMAND_LEN 512
 #define MAX_FILENAME_LEN 128
 #define TTY "/dev/tty"
 #define STAR "*****"
+#define DELIM 0x2A
 
 const char COMP_AOK[] = "COMP_AOK\0";
 const char COMP_ERR[] = "COMP_ERR\0";
@@ -107,12 +108,34 @@ void clean_up()
 	if (DEBUG) printf("%sExecutor Finished%s\n", STAR, STAR);
 }
 
+/********************* Helpers ***********************/
+
+void send_ack(int pipe_fd, const char *ack_str, char *user, char *filename) {
+	// Allocate space for the message
+	char *buf = (char *) malloc(strlen(ack_str) + strlen(user) + strlen(filename) + 3);
+	
+	// Concat the user, filename and acknowledgement string
+	strcpy(buf, user);
+	strcpy(buf + strlen(user) + 1, filename);
+	strcpy(buf + strlen(user) + strlen(filename) + 2, ack_str);
+
+	// Change the null terminators to delimiters
+	buf[strlen(user)] = DELIM;
+	buf[strlen(user) + 1 + strlen(filename)] = DELIM;
+
+	// Write the message to the pipe
+	write(pipe_fd, buf, strlen(buf));
+
+	// Deallocate message
+	free(buf);
+}
+
 int main(int argc, char **argv) 
 {
 
 	// Check arguments
-	if (argc < 3) {
-		printf("Usage: %s <filename> <username>\n", argv[0]);
+	if (argc != 4) {
+		printf("Usage: %s <filename> <username> <pipe fd>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	
@@ -130,19 +153,19 @@ int main(int argc, char **argv)
 	// Write compilation result code to pipe, exit if errored
 	if (comp_result)
 	{
-		write(pipe_fd, COMP_ERR, strlen(COMP_AOK));
+		send_ack(pipe_fd, COMP_ERR, user, filename);
 		clean_up();
 		exit(1);
 	}
 	else
 	{
-		write(pipe_fd, COMP_AOK, strlen(COMP_AOK));
+		send_ack(pipe_fd, COMP_AOK, user, filename);
 	}
 
 	// Run executable
 	run_program(user);
 
-	// Do any cleanup necessary 
+	// Restore stdout and stderr 
 	clean_up();
 
 }
