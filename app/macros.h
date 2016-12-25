@@ -11,22 +11,26 @@
 #define MAX_PACKET_SIZE 512
 
 /* Judge macros */
-#define EXECUTOR "executor"
 #define MAX_ARGS 8
 #define MAX_ENVS 8
 #define FD_MAX 2<<5
 
-/* executor macros */
-#define SANDBOX "sandbox"
 #define LOGFILE_SUFFIX "log.txt"
 #define ERRORFILE_SUFFIX "error.txt"
-#define OUTFILE_SUFFIX "out.txt"
+#define DIFF_SUFFIX "diff.txt"
+
+#define OUTFILE_SUFFIX "out"
 #define BIN "bin"
+#define MASTER_DIR "master"
+#define SANDBOX "sandbox"
+#define EXECUTOR "executor"
 
 const char COMP_AOK[] = "COMP_AOK\0";
 const char COMP_ERR[] = "COMP_ERR\0";
 const char RUN_AOK[] = "RUN_AOK\0";
 const char RUN_ERR[] = "RUN_ERR\0";
+const char CHK_AOK[] = "CHK_AOK\0";
+const char CHK_ERR[] = "CHK_ERR\0";
 
 typedef struct {
 	// Shared pipe file descriptors
@@ -41,8 +45,8 @@ typedef struct {
 	// Username of submitted file's owner
 	char user[MAX_FILENAME_LEN];
 
-	// Path to the input file or NULL
-	char *input_path;
+	// Path to the input files or NULL
+	char **input_files;
 } Judge;
 
 #endif

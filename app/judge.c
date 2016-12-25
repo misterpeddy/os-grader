@@ -22,8 +22,11 @@ int init_judge(int argc, char **argv, Judge *judge)
 	strcpy(&judge->user, "pp5nv");
 	
 	// Capture input file path
-	judge->input_path = (char *) malloc(strlen("input1.txt")+1);
-	strcpy(judge->input_path, "input1.txt");
+	judge->input_files = (char **) malloc(2);
+	judge->input_files[0] = (char *) malloc(strlen("input1.txt") + 1);
+	strcpy(judge->input_files[0], "input1.txt");
+	judge->input_files[1] = (char *) malloc(strlen("input2.txt") + 1);
+	strcpy(judge->input_files[1], "input2.txt");
 
 	return 0;	
 }
@@ -31,7 +34,9 @@ int init_judge(int argc, char **argv, Judge *judge)
 void destruct_judge(Judge *judge) 
 {
 	free(judge->source_path);
-	free(judge->input_path);
+	free(judge->input_files[0]);
+	free(judge->input_files[1]);
+	free(judge->input_files);
 }
 
 int wait_for_comp_ack(Judge *judge)
@@ -41,6 +46,9 @@ int wait_for_comp_ack(Judge *judge)
 	char message[MAX_PACKET_SIZE];
 	nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
 	
+	// Error if empty or bad message
+	if (nbytes <= 0) return 1;
+
 	// Set up to parse message
 	char *user, *source_path, *ack_code, *token_state;
 	char delimiter[2];
@@ -51,7 +59,8 @@ int wait_for_comp_ack(Judge *judge)
 	source_path = strtok_r(NULL, " *", &token_state);
 	ack_code = strtok_r(NULL, " *", &token_state);
 	
-	printf("tokenized[%s][%s][%s]\n", user, source_path, ack_code);
+	printf("Received[%s][%s][%s]\n", user, source_path, ack_code);
+	return 0;
 }
 
 int main(int argc, char **argv) 
@@ -68,8 +77,15 @@ int main(int argc, char **argv)
 		close(judge.fd[0]);
 
 		// Set arguments and environment variables
-		char *exec_args[] = {EXECUTOR, judge.source_path, &judge.user, 
-			judge.fd_w, judge.input_path, NULL};
+		char *exec_args[6];
+		exec_args[0] = EXECUTOR;
+		exec_args[1] = judge.source_path;
+		exec_args[2] = &judge.user;
+		exec_args[3] = judge.fd_w;
+		exec_args[4] = judge.input_files[0];
+		exec_args[5] = judge.input_files[1];
+		exec_args[6] = NULL;
+
 		char *exec_envs[] = {NULL};
 
 		if (DEBUG) printf("Starting Execution\n");
@@ -80,8 +96,11 @@ int main(int argc, char **argv)
 		// Close writing end since receiver will not write to the pipe
 		close(judge.fd[1]);	
 
-		wait_for_comp_ack(&judge);
+		while (!wait_for_comp_ack(&judge));
+
+		// Wait on child
 		wait(NULL);
+
 		if (DEBUG) printf("Finished Execution\n");
 	}
 
