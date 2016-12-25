@@ -23,7 +23,7 @@
 #define BIN "bin"
 #define MASTER_DIR "master"
 #define SANDBOX "sandbox"
-#define EXECUTOR "executor"
+#define JUDGE "judge"
 #define TEMP "temp"
 
 const char COMP_AOK[] = "COMP_AOK\0";
@@ -46,8 +46,17 @@ typedef struct {
 	// Username of submitted file's owner
 	char user[MAX_FILENAME_LEN];
 
+	// Number of input files
+	int num_input_files;
+
 	// Path to the input files or NULL
 	char **input_files;
+	
+	// Command line argument
+	char *exec_args[2<<5];
+
+	// Environment variables
+	char *exec_envs[2<<5];
 } Judge;
 
 #endif

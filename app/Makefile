@@ -1,12 +1,12 @@
 CC=gcc
 CFLAGS=-w
 
-all: macros.h judge.o
-	$(CC) judge.o -o main
-judge.o: judge.c macros.h
-	$(CC) -c macros.h judge.c
-executor: executor.c macros.h
-	$(CC) $(CFLAGS) executor.c macros.h -o executor
+all: receiver judge
+
+receiver: receiver.c macros.h
+	$(CC) receiver.c macros.h -o receiver
+judge: judge.c macros.h
+	$(CC) $(CFLAGS) judge.c macros.h -o judge
 clean:
 	rm -rf *o *gch
 
