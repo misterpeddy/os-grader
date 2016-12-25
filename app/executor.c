@@ -9,49 +9,61 @@
 
 char log_file[MAX_FILENAME_LEN];
 char err_file[MAX_FILENAME_LEN];
+char out_file[MAX_FILENAME_LEN];
 char diff_file[MAX_FILENAME_LEN];
 
-void init_sandbox(char *user) 
-{	
+void init_sandbox(char *user, char *ass_num) {	
 	if (DEBUG) printf("%sExecutor Started%s\n", FILLER, FILLER);
 	
-	// Make empty directory for sandbox
-	char command[MAX_COMMAND_LEN];
-	memset(&command, 0, MAX_COMMAND_LEN);
-	sprintf(&command, "rm -rf %s && mkdir %s", user, user);
-	system(command);
+	// Make sure user directory exists
+	char command1[MAX_COMMAND_LEN];
+	sprintf(&command1, "mkdir %s", user);
+	if (access(user, F_OK) == -1) system(command1);
+	
+	// Remove assignment directory
+	char command2[MAX_COMMAND_LEN];
+	sprintf(&command2, "rm -rf %s/%s", user, ass_num);
+	system(command2);
+
+	// Create assignment directory
+	char command3[MAX_COMMAND_LEN];
+	sprintf(&command3, "mkdir %s/%s", user, ass_num);
+	system(command3);
 
 	// Log stdout
-	sprintf(&log_file, "%s/%s_%s", user, user, LOGFILE_SUFFIX);
+	sprintf(&log_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num, LOGFILE_SUFFIX);
 	freopen(log_file, "w", stdout);
 
 	// Log stderr
-	sprintf(&err_file, "%s/%s_%s", user, user, ERRORFILE_SUFFIX);
+	sprintf(&err_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num, ERRORFILE_SUFFIX);
 	freopen(err_file, "w", stderr);
 
 	if (DEBUG) 
 	{
 		printf("%sRedirecting stdout output%s\n", FILLER, FILLER);
-		printf("$(%s)\n", command);
+		printf("$(%s)\n$(%s)\n$(%s)\n", command1, command2, command3);
 	}
 }
 
 /* 
-** Compiles C file with name filename for user
+** Compiles C file (temp/filename) for user for assignment ass_num
+** Binary will be at user/ass_num/bin
 ** Returns 0 if compiled with no errors otherwise positive number 
 */
-int compile_source(char *filename, char *user) 
+int compile_source(char *filename, char *user, char *ass_num) 
 {	
-	if (DEBUG) printf("\n%sCompiling %s for %s%s\n", FILLER, filename, user, FILLER);
+	if (DEBUG) printf("\n%sCompiling assignment %s [%s] for %s%s\n", 
+		FILLER, ass_num, filename, user, FILLER);
 
 	// Compile source
 	char command[MAX_COMMAND_LEN];
 	memset(&command, 0, MAX_COMMAND_LEN);
-	sprintf(&command, "gcc -w %s -o %s/%s", filename, user, BIN);
+	sprintf(&command, "gcc -w %s/%s -o %s/%s/%s", TEMP, filename, user, ass_num, BIN);
 	if (DEBUG) printf("$(%s)\n", command);
 	system(command);
 	
-	if (DEBUG) printf("%sFinished compiling %s for %s%s\n\n", FILLER, filename, user, FILLER);
+	if (DEBUG) printf("%sFinished compiling assignment %s [%s] for %s%s\n\n", 
+		FILLER, ass_num, filename, user, FILLER);
 
 	// Read error log file stats
 	struct stat log_stat;
@@ -60,31 +72,29 @@ int compile_source(char *filename, char *user)
 	return log_stat.st_size;
 }
 
-int run_program(char *user, char *input_file) {
-	if (DEBUG) printf("\n%sRunning %s/%s%s\n", FILLER, user, BIN, FILLER);
+int run_program(char *user, char *ass_num, char *input_file) {
+	if (DEBUG) printf("\n%sRunning %s/%s/%s%s\n", FILLER, user, ass_num, BIN, FILLER);
 
 	// Redirect output to OUT
-	char logfile[MAX_FILENAME_LEN];
-	sprintf(&logfile, "%s/%s_%s_%s", user, user, OUTFILE_SUFFIX, input_file);
-	freopen(logfile, "w", stdout);
+	sprintf(&out_file, "%s/%s/%s_%s_%s_%s", 
+		user, ass_num, user, ass_num, OUTFILE_SUFFIX, input_file);
+	freopen(out_file, "w", stdout);
 
 	// Run the binary
 	char command[MAX_COMMAND_LEN];
 	memset(&command, 0, MAX_COMMAND_LEN);
 	if (input_file) {
-		sprintf(&command, "./%s/%s < %s", user, BIN, input_file);
+		sprintf(&command, "./%s/%s/%s < %s", user, ass_num, BIN, input_file);
 	} else {
-		sprintf(&command, "./%s/%s", user, BIN);
+		sprintf(&command, "./%s/%s/%s", user, ass_num, BIN);
 	}
 	system(command);	
 
 	// Redirect output to logfile
-	memset(&logfile, 0, MAX_FILENAME_LEN);
-	sprintf(&logfile, "%s/%s_%s", user, user, LOGFILE_SUFFIX);
-	freopen(logfile, "a", stdout);
+	freopen(log_file, "a", stdout);
 	
 	if (DEBUG) printf("$(%s)\n", command);
-	if (DEBUG) printf("%sFinished running %s/%s%s\n\n", FILLER, user, BIN, FILLER);
+	if (DEBUG) printf("%sFinished running %s/%s/%s%s\n\n", FILLER, user, ass_num, BIN, FILLER);
 
 	// Read error log file stats
 	struct stat log_stat;
@@ -97,25 +107,25 @@ int run_program(char *user, char *input_file) {
 ** <user>/<user>_out_<input_file>
 ** master/out_<input_file>
 */
-int judge(char *user, char *input_file) {
-	if (DEBUG) printf("\n%sJudging %s for %s%s\n", FILLER, input_file, user, FILLER);
+int judge(char *user, char *ass_num, char *input_file) {
+	if (DEBUG) printf("\n%sJudging assignment %s with input %s for %s%s\n", 
+		FILLER, ass_num, input_file, user, FILLER);
 
 	// Set up file to send diff to
-	sprintf(&diff_file, "%s/%s_%s", user, user, DIFF_SUFFIX);
+	sprintf(&diff_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num, DIFF_SUFFIX);
 
-	// Set up user and master file paths
-	char user_file[MAX_FILENAME_LEN];
+	// Set up master file path
 	char master_file[MAX_FILENAME_LEN];
-	sprintf(&user_file, "%s/%s_%s_%s", user, user, OUTFILE_SUFFIX, input_file);
 	sprintf(&master_file, "%s/%s_%s", MASTER_DIR, OUTFILE_SUFFIX, input_file); 
 
 	// Execute the diff and write to the diff file
 	char command[MAX_COMMAND_LEN];
-	sprintf(&command, "diff %s %s > %s", user_file, master_file, diff_file);
+	sprintf(&command, "diff %s %s > %s", out_file, master_file, diff_file);
 	if (DEBUG) printf("$(%s)\n", command);
 	int return_code = system(command);
 	
-	if (DEBUG) printf("%sFinished judging %s for %s%s\n\n", FILLER, input_file, user, FILLER);
+	if (DEBUG) printf("%sFinished judging assignment %s with input %s for %s%s\n\n", 
+		FILLER, ass_num, input_file, user, FILLER);
 
 	// Read error log file stats
 	struct stat log_stat;
@@ -151,7 +161,7 @@ void send_ack(int pipe_fd, const char *ack_str, char *user, char *filename) {
 	strcpy(buf + strlen(user) + 1, filename);
 	strcpy(buf + strlen(user) + strlen(filename) + 2, ack_str);
 
-	// Change the null terminators to delimiters
+	// Change null terminators to delimiters
 	buf[strlen(user)] = DELIM;
 	buf[strlen(user) + 1 + strlen(filename)] = DELIM;
 
@@ -165,20 +175,22 @@ void send_ack(int pipe_fd, const char *ack_str, char *user, char *filename) {
 int main(int argc, char **argv) {
 
 	// Check arguments
-	if (argc < 4) {
-		printf("Usage: %s <source file> <username> <pipe fd> [<input file>]\n", argv[0]);
+	if (argc < 5) {
+		printf("Usage: %s <source file> <username> \
+			<assignment number> <pipe fd> [<input files>...]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	
 	// Capture arguments
 	char *source_file = argv[1];
 	char *user = argv[2];
-	int pipe_fd = atoi(argv[3]);
-	int num_input_files = argc - 4; 
-	char **input_files = &argv[4];
+	char *ass_num = argv[3];
+	int pipe_fd = atoi(argv[4]);
+	int num_input_files = argc - 5; 
+	char **input_files = &argv[5];
 	
 	// Create sandbox
-	init_sandbox(user);
+	init_sandbox(user, ass_num);
 
 	// Log arguments
 	if (DEBUG) {
@@ -189,7 +201,7 @@ int main(int argc, char **argv) {
 	}
 
 	// Compile submitted source code 
-	int comp_result = compile_source(source_file, user);
+	int comp_result = compile_source(source_file, user, ass_num);
 
 	// Write compilation result code to pipe, exit if errored
 	if (comp_result) {
@@ -202,7 +214,7 @@ int main(int argc, char **argv) {
 	for (int i=0; i<num_input_files; i++) {
 
 		// Run and exit if errored
-		if (run_program(user, input_files[i])) {
+		if (run_program(user, ass_num, input_files[i])) {
 			send_ack(pipe_fd, RUN_ERR, user, source_file);
 			clean_and_exit(EXIT_FAILURE);
 		}
@@ -210,7 +222,7 @@ int main(int argc, char **argv) {
 		send_ack(pipe_fd, RUN_AOK, user, source_file);
 
 		// Judge the output against master
-		if (judge(user, input_files[i])) {
+		if (judge(user, ass_num, input_files[i])) {
 			send_ack(pipe_fd, CHK_ERR, user, source_file);
 			clean_and_exit(EXIT_FAILURE);
 		}

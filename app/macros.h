@@ -24,6 +24,7 @@
 #define MASTER_DIR "master"
 #define SANDBOX "sandbox"
 #define EXECUTOR "executor"
+#define TEMP "temp"
 
 const char COMP_AOK[] = "COMP_AOK\0";
 const char COMP_ERR[] = "COMP_ERR\0";

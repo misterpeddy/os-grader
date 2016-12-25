@@ -44,6 +44,7 @@ int wait_for_comp_ack(Judge *judge)
 	// Block until receive ack
 	int nbytes, pipe_in = judge->fd[0];
 	char message[MAX_PACKET_SIZE];
+	memset(&message, 0, MAX_PACKET_SIZE);
 	nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
 	
 	// Error if empty or bad message
@@ -77,14 +78,16 @@ int main(int argc, char **argv)
 		close(judge.fd[0]);
 
 		// Set arguments and environment variables
-		char *exec_args[6];
-		exec_args[0] = EXECUTOR;
-		exec_args[1] = judge.source_path;
-		exec_args[2] = &judge.user;
-		exec_args[3] = judge.fd_w;
-		exec_args[4] = judge.input_files[0];
-		exec_args[5] = judge.input_files[1];
-		exec_args[6] = NULL;
+		char *exec_args[2<<5];
+		int k = 0;
+		exec_args[k++] = EXECUTOR;
+		exec_args[k++] = judge.source_path;
+		exec_args[k++] = &judge.user;
+		exec_args[k++] = "0";
+		exec_args[k++] = judge.fd_w;
+		exec_args[k++] = judge.input_files[0];
+		exec_args[k++] = judge.input_files[1];
+		exec_args[k++] = NULL;
 
 		char *exec_envs[] = {NULL};
 
