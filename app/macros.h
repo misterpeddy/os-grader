@@ -6,7 +6,7 @@
 /* Shared macros */
 #define DEBUG 1 
 #define FILLER "*****"
-#define DELIM 0x2A
+#define DELIM "*"
 #define MAX_FILENAME_LEN 128
 #define TTY "/dev/tty"
 #define MAX_COMMAND_LEN 512

@@ -147,7 +147,7 @@ void clean_and_exit(int code) {
 	if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", FILLER, FILLER);
 
 	// Reroute stdout and stderr to TTY
-    fflush(stdout);
+  fflush(stdout);
 	fflush(stderr);
 	freopen(TTY, "a", stderr);
 	freopen(TTY, "a", stdout);
@@ -166,13 +166,13 @@ void clean_and_exit(int code) {
 */
 void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
     
-    // Compute size of the second and third bits + delimiters
-    int size = strlen(ack_str) + strlen(judge_id) + 3 /* delimiters */;
+  // Compute size of the second and third bits + delimiters
+  int size = strlen(ack_str) + strlen(judge_id) + 3 /* delimiters */;
 
-    // Add the length of the size itself
-    int size_len = 1;
-    if (size > 8) size_len = 2;
-    size += size_len;
+  // Add the length of the size itself
+  int size_len = 1;
+  if (size > 8) size_len = 2;
+  size += size_len;
 
 	// Allocate space for the message
 	char *buf = (char *) malloc(size);
@@ -183,11 +183,9 @@ void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
 	strcpy(buf + size_len + strlen(judge_id) + 2, ack_str);
 
 	// Change null terminators to delimiters
-	buf[size_len] = DELIM;
-	buf[size_len + 1 + strlen(judge_id)] = DELIM;
-    buf[size-1] = DELIM;
-        
-    printf("CHECKING PIPE[%s]\n", buf);
+	buf[size_len] = *DELIM;
+	buf[size_len + 1 + strlen(judge_id)] = *DELIM;
+  buf[size-1] = *DELIM;
 
 	// Write the message to the pipe
 	write(pipe_fd, buf, strlen(buf));
@@ -238,7 +236,7 @@ int main(int argc, char **argv) {
 
 	// Write compilation result code to pipe, exit if errored
 	if (comp_result) {
-		if (DEBUG) printf("%sCompilation failed - Exiting%s\n", FILLER, FILLER);
+		if (DEBUG) printf("%sCompilation failed - Exiting%s\n\n", FILLER, FILLER);
 		send_ack(pipe_fd, CMP_ERR, judge_id);
 		clean_and_exit(EXIT_FAILURE);
 	} else {
@@ -249,7 +247,7 @@ int main(int argc, char **argv) {
 
 		// Run and exit if errored
 		if (run_program(user, ass_num, input_files[i])) {
-			if (DEBUG) printf("%sRun #%d failed - Exiting%s\n", i, FILLER, FILLER);
+			if (DEBUG) printf("%sRun #%d failed - Exiting%s\n\n", i, FILLER, FILLER);
 			send_ack(pipe_fd, RUN_ERR, judge_id);
 			clean_and_exit(EXIT_FAILURE);
 		}
@@ -258,7 +256,7 @@ int main(int argc, char **argv) {
 
 		// Judge the output against master
 		if (judge(user, ass_num, input_files[i])) {
-			if (DEBUG) printf("%sFailed test case #%d - Exiting%s\n", i, FILLER, FILLER);
+			if (DEBUG) printf("%sFailed test case #%d - Exiting%s\n\n", i, FILLER, FILLER);
 			send_ack(pipe_fd, CHK_ERR, judge_id);
 			clean_and_exit(EXIT_FAILURE);
 		}
