@@ -12,6 +12,12 @@ char err_file[MAX_FILENAME_LEN];
 char out_file[MAX_FILENAME_LEN];
 char diff_file[MAX_FILENAME_LEN];
 
+/******************************* Judge Routines ***********************************/
+
+/*
+** Creates sandbox user/ass_num
+** reroutes the stdout and stderr of the process to log_file and err_file
+*/
 void init_sandbox(char *user, char *ass_num) {	
 	if (DEBUG) printf("%sJudge Started%s\n", FILLER, FILLER);
 	
@@ -38,8 +44,7 @@ void init_sandbox(char *user, char *ass_num) {
 	sprintf(&err_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num, ERRORFILE_SUFFIX);
 	freopen(err_file, "w", stderr);
 
-	if (DEBUG) 
-	{
+	if (DEBUG) {
 		printf("%sRedirecting stdout output%s\n", FILLER, FILLER);
 		printf("$(%s)\n$(%s)\n$(%s)\n", command1, command2, command3);
 	}
@@ -50,8 +55,7 @@ void init_sandbox(char *user, char *ass_num) {
 ** Binary will be at user/ass_num/bin
 ** Returns 0 if compiled with no errors otherwise positive number 
 */
-int compile_source(char *filename, char *user, char *ass_num) 
-{	
+int compile_source(char *filename, char *user, char *ass_num) {	
 	if (DEBUG) printf("\n%sCompiling assignment %s [%s] for %s%s\n", 
 		FILLER, ass_num, filename, user, FILLER);
 
@@ -136,15 +140,18 @@ int judge(char *user, char *ass_num, char *input_file) {
 	stat(diff_file, &log_stat);
 	
 	return log_stat.st_size + return_code;
-
 }
 
 void clean_and_exit(int code) {
+
 	if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", FILLER, FILLER);
-	fflush(stdout);
+
+	// Reroute stdout and stderr to TTY
+    fflush(stdout);
 	fflush(stderr);
 	freopen(TTY, "a", stderr);
 	freopen(TTY, "a", stdout);
+
 	if (DEBUG) printf("%sJudge Finished%s\n", FILLER, FILLER);
 
 	// Exit with the supplied exit code
@@ -152,13 +159,14 @@ void clean_and_exit(int code) {
 }
 
 /******************************* Helpers ***********************************/
+
 /*
-** Writes acknowledgement (<2-byte message length><delimiter><judge_id><delimiter><ack_code>\0)
+** Writes acknowledgement (<message size><delimiter><judge_id><delimiter><ack_code><delimiter>)
 ** onto the pipe.
 */
 void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
     
-    // Compute size of the second and third bits + null terminators
+    // Compute size of the second and third bits + delimiters
     int size = strlen(ack_str) + strlen(judge_id) + 3 /* delimiters */;
 
     // Add the length of the size itself
@@ -169,7 +177,6 @@ void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
 	// Allocate space for the message
 	char *buf = (char *) malloc(size);
 	
-
 	// Concat the message length, judge_id and acknowledgement string
 	sprintf(buf, "%d", size);
 	strcpy(buf + size_len + 1, judge_id);
@@ -189,6 +196,13 @@ void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
 	free(buf);
 }
 
+/******************************* Main ***********************************/
+
+/*
+** Captures and logs arguments, creates sandbox, compiles the source code and runs the code.
+** It also sends ack messages on the shared pipe after compilation, each run, each diff
+** and the end of the process.
+*/
 int main(int argc, char **argv) {
 
 	// Check arguments

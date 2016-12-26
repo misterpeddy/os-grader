@@ -16,6 +16,12 @@ pthread_mutex_t inc_lock;
 Judge *active_judges[MAX_JUDGES];
 pthread_mutex_t judge_lock;
 
+/******************************* Judge Routines ***********************************/
+
+/*
+** Initializes the judge struct and adds it to active_judges
+** TODO: Init using the data packet from the request
+*/
 int init_judge(Judge *judge)
 {
 	// Set the judge id
@@ -74,6 +80,10 @@ int init_judge(Judge *judge)
 	return 0;	
 }
 
+/*
+** Adds judge to the first empty spot in active_judges
+** If no empty spots, returns 1
+*/
 int add_judge(Judge *judge) {
 	int i=0;
 	while (i<MAX_JUDGES) {
@@ -86,6 +96,9 @@ int add_judge(Judge *judge) {
 	return 1;
 }
 
+/*
+** Finds judge with id_str judge id from active_judges
+*/
 Judge *get_judge(char *id_str) {
 	for (int i=0; i<MAX_JUDGES; i++) {
 		if (active_judges[i] && !strcmp(active_judges[i]->id, id_str))
@@ -94,6 +107,10 @@ Judge *get_judge(char *id_str) {
 	return NULL;
 }
 
+/*
+** Frees all memory associated with a Judge struct.
+** Also removes the entry from the active_judges list
+*/
 void destruct_judge(Judge *judge) 
 {
 	// Free all input file paths
@@ -114,6 +131,14 @@ void destruct_judge(Judge *judge)
 	}
 }
 
+/******************************* I/O Routines***********************************/
+
+/*
+** Blocking call to sit and listen on the read-end of the judges shared pipe.
+** When receives a fatal ack {CMP_ERR, RUN_ERR, CHK_ERR} or judge complete {JDG_AOK}
+** it destructs that judge and records its run result.
+** TODO: Actually record the result
+*/
 void listen_to_judges()
 {
 	while (1) {
@@ -165,6 +190,12 @@ void listen_to_judges()
     //free(message);
 }
 
+/******************************* Handlers ***********************************/
+
+/*
+** Handler for signals of type SIGLARM
+** Checks to see if any judges have max'd out their time limit - if yes destroys them.
+*/
 void alarm_handler(int signal) {
 	if (signal != SIGALRM) {
         return;
@@ -175,13 +206,13 @@ void alarm_handler(int signal) {
     int lifetime;
     gettimeofday(&end, NULL);
     
-    // Find processes that have maxed out their time limitation
+    // Find processes that have max'd out their time limitation
     for (int i=0; i<MAX_JUDGES; i++) {
         if (active_judges[i]) {
             start = active_judges[i]->time_struct;
             lifetime = (end.tv_sec*MILLI + end.tv_usec)-(start.tv_sec*MILLI + start.tv_usec);	
 
-            // Check if process has maxed out
+            // Check if process has max'd out
             if (lifetime > MAX_TIME_ALLOWED * MILLI) {
 
                 if (DEBUG) printf("Judge process (%d) for user (%s) timed out - Exiting\n", 
@@ -194,6 +225,10 @@ void alarm_handler(int signal) {
     }
 }
 
+/*
+** Handler for incoming requests
+** Creates a Judge struct with relevant info and forks off the process.
+*/
 void handle_request() {
 	Judge *judge = (Judge *)malloc(sizeof(Judge));
 
@@ -218,12 +253,16 @@ void handle_request() {
 
 		alarm(MAX_TIME_ALLOWED);
 	}
-
-	//destruct_judge(judge);
 }
 
+/******************************* Main ***********************************/
+
+/*
+** Initializes relevant entities
+** Starts listening for new connections, and handles incoming requests.
+*/
 int main(int argc, char **argv) {
-	// Read settings file and initialize assignments DS
+	// TODO:Read settings file and initialize assignments DS
 
 	// Set up shared pipe
 	pipe(fd);
@@ -239,18 +278,9 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 	
-	// Set up the listener to listen for incoming requests	
+	// TODO:Set up the listener to listen for incoming requests	
 
-	// while something
-	// if something happens
-	handle_request();
-    usleep(MILLI);
-	handle_request();
-    usleep(MILLI);
-	handle_request();
-    usleep(MILLI);
-	handle_request();
+	handle_request(/*data*/);
 
-	while(1);
-	//end while
+	/* Placeholder for listener */ while(1);
 }
