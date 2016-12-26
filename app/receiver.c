@@ -1,18 +1,30 @@
+#include <pthread.h>
+#include <signal.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include "macros.h"
 
-#define DEBUG 1
+int fd[2];
+
+long id_incrementor = 4;
+pthread_mutex_t inc_lock;
+
+Judge *active_judges[MAX_JUDGES];
+pthread_mutex_t judge_lock;
 
 int init_judge(Judge *judge)
 {
+	// Set the judge id
+	pthread_mutex_lock(&inc_lock);
+	sprintf(&judge->id, "%ld", id_incrementor++);
+	pthread_mutex_unlock(&inc_lock);
 
-	// Create shared pipe, fd[0] for reading, fd[1] for writing
-	pipe(judge->fd);
-	sprintf(&judge->fd_w, "%d", judge->fd[1]);
+	// Copy shared pipe descriptors, fd[0] for reading, fd[1] for writing
+	sprintf(&judge->fd_w, "%d", fd[1]);
 
 	// Capture source file path
 	judge->source_path = (char *) malloc(strlen("prog.c") + 1);
@@ -21,6 +33,9 @@ int init_judge(Judge *judge)
 	// Capture username
 	strcpy(&judge->user, "pp5nv");
 	
+	// Set number of input files
+	judge->num_input_files = 2;
+	
 	// Capture input file path
 	judge->input_files = (char **) malloc(2);
 	judge->input_files[0] = (char *) malloc(strlen("input1.txt") + 1);
@@ -28,9 +43,10 @@ int init_judge(Judge *judge)
 	judge->input_files[1] = (char *) malloc(strlen("input2.txt") + 1);
 	strcpy(judge->input_files[1], "input2.txt");
 
-	// Set arguments and environment variables
+	// Set command line arguments
 	int k = 0;
 	judge->exec_args[k++] = JUDGE;
+	judge->exec_args[k++] = &judge->id;
 	judge->exec_args[k++] = judge->source_path;
 	judge->exec_args[k++] = &judge->user;
 	judge->exec_args[k++] = "0";
@@ -39,83 +55,141 @@ int init_judge(Judge *judge)
 	judge->exec_args[k++] = judge->input_files[1];
 	judge->exec_args[k++] = NULL;
 
+	// Set environment variables
 	judge->exec_envs[0] = NULL;
 
+	// Set the time of creation
+	gettimeofday(&judge->time_struct, NULL);
+
+	// Add the judge to active_judges and return if errored
+	if (add_judge(judge)) {
+		// Reset the incrementor
+		pthread_mutex_lock(&inc_lock);
+		id_incrementor--;
+		pthread_mutex_unlock(&inc_lock);
+
+		if (DEBUG) printf("Could not add new judge\n");
+		return 1;	
+	}
 	return 0;	
 }
 
 void destruct_judge(Judge *judge) 
 {
 	free(judge->source_path);
-	free(judge->input_files[0]);
-	free(judge->input_files[1]);
+	for (int i=0; i<judge->num_input_files; i++) {
+		free(judge->input_files[i]);
+	}
 	free(judge->input_files);
 }
 
-int wait_for_comp_ack(Judge *judge)
+void listen_to_judges()
 {
-	// Block until receive ack
-	int nbytes, pipe_in = judge->fd[0];
-	char message[MAX_PACKET_SIZE];
-	memset(&message, 0, MAX_PACKET_SIZE);
-	nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
-	
-	// Error if empty or bad message
-	if (nbytes <= 0) return 1;
+	while (1) {
+		// Block until receive ack
+		int nbytes, pipe_in = fd[0];
+		char message[MAX_PACKET_SIZE];
+		memset(&message, 0, MAX_PACKET_SIZE);
+		nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
+		
+		if (nbytes > 0) { 
 
-	// Set up to parse message
-	char *user, *source_path, *ack_code, *token_state;
-	char delimiter[2];
-	delimiter[0] = DELIM; 
+			// Set up to parse message
+			char *user, *judge_id, *ack_code, *token_state;
+			char delimiter[2];
+			delimiter[0] = DELIM; 
 
-	// Parse the message
-	user = strtok_r(message, delimiter, &token_state);
-	source_path = strtok_r(NULL, " *", &token_state);
-	ack_code = strtok_r(NULL, " *", &token_state);
-	
-	printf("Received[%s][%s][%s]\n", user, source_path, ack_code);
-	return 0;
+			// Parse the message
+			user = strtok_r(message, delimiter, &token_state);
+			judge_id = strtok_r(NULL, " *", &token_state);
+			ack_code = strtok_r(NULL, " *", &token_state);
+			
+			if (DEBUG) printf("Received[%s][%s][%s] (%d bytes)\n", user, judge_id, ack_code, nbytes);
+
+			// Act on the response
+			if (!strcmp(ack_code, &JDG_AOK)) printf("DONE1\n");
+			if (!strcmp(ack_code, &CHK_ERR)) printf("DONE2\n");
+			if (!strcmp(ack_code, &RUN_ERR)) printf("DONE3\n");
+			if (!strcmp(ack_code, &CMP_ERR)) printf("DONE4\n");
+
+
+		} else {
+			if (DEBUG) printf("Received Faulty message of length [%d]\n", nbytes);			
+			usleep(100000);
+		}
+	}
+}
+
+void alarm_handler(int signal) {
+	if (signal == SIGALRM) {
+		if (DEBUG) printf("A judge process timed out - Exiting\n");
+		//kill(child_pid, SIGKILL);
+	}
+}
+
+int add_judge(Judge *judge) {
+	int i=0;
+	while (i<MAX_JUDGES) {
+		if (!active_judges[i]) {
+			active_judges[i] = judge;
+			return 0;
+		} 
+		i++;
+	}	
+	return 1;
 }
 
 void handle_request() {
-	Judge judge;
+	Judge *judge = (Judge *)malloc(sizeof(Judge));
 
-	if (init_judge(&judge)) 
-	{
+	if (init_judge(judge)) {
 		exit(EXIT_FAILURE);
 	}
-	if (fork() == 0) 
-	{
+
+	int pid = fork();
+	if (pid == 0) {
 		// Close reading end since executor will not read from the pipe
-		close(judge.fd[0]);
-
-		if (DEBUG) printf("Starting Execution\n");
-		execv(JUDGE, judge.exec_args);
+		close(fd[0]);
+				
+		if (DEBUG) printf("Starting Judge\n");
+		execv(JUDGE, judge->exec_args);
 		perror("||execve||");
-	} else 
-	{
-		// Close writing end since receiver will not write to the pipe
-		close(judge.fd[1]);	
+		exit(EXIT_FAILURE);
+	} else {
+		judge->pid = pid;
 
-		while (!wait_for_comp_ack(&judge));
+		if (signal(SIGALRM, alarm_handler) == SIG_ERR && DEBUG)
+			printf("Could not register alarm listener\n");	
 
-		// Wait on child
-		wait(NULL);
-
-		if (DEBUG) printf("Finished Execution\n");
+		alarm(MAX_TIME_ALLOWED);
 	}
 
-	destruct_judge(&judge);
+	//destruct_judge(judge);
 }
 
-int main(int argc, char **argv) 
-{
+int main(int argc, char **argv) {
 	// Read settings file and initialize assignments DS
 
-	// Set up the listener to listen for incoming requests
+	// Set up shared pipe
+	pipe(fd);
+	
+	// Spawn a thread to listen on judges pipe
+	pthread_t pipe_listener_thread;
+	pthread_create(&pipe_listener_thread, NULL, &listen_to_judges, NULL);
+
+	// Set up the mutex locks 
+	if (pthread_mutex_init(&inc_lock, NULL) || 
+		pthread_mutex_init(&judge_lock, NULL)) {
+		if (DEBUG) printf("Could not initiazlie mutex locks - Exiting\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	// Set up the listener to listen for incoming requests	
 
 	// while something
 	// if something happens
 	handle_request();
+
+	while(1);
 	//end while
 }

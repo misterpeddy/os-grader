@@ -1,6 +1,8 @@
 #ifndef MACROS_H
 #define MACROS_H
 
+#include <sys/time.h>
+
 /* Shared macros */
 #define DEBUG 1 
 #define FILLER "*****"
@@ -14,6 +16,8 @@
 #define MAX_ARGS 8
 #define MAX_ENVS 8
 #define FD_MAX 2<<5
+#define MAX_TIME_ALLOWED 3
+#define MAX_JUDGES 32
 
 #define LOGFILE_SUFFIX "log.txt"
 #define ERRORFILE_SUFFIX "error.txt"
@@ -26,17 +30,24 @@
 #define JUDGE "judge"
 #define TEMP "temp"
 
-const char COMP_AOK[] = "COMP_AOK\0";
-const char COMP_ERR[] = "COMP_ERR\0";
+/* Receiver macros */
+#define MAX_NUM_THREADS 16
+
+const char CMP_AOK[] = "CMP_AOK\0";
+const char CMP_ERR[] = "CMP_ERR\0";
 const char RUN_AOK[] = "RUN_AOK\0";
 const char RUN_ERR[] = "RUN_ERR\0";
 const char CHK_AOK[] = "CHK_AOK\0";
 const char CHK_ERR[] = "CHK_ERR\0";
+const char JDG_AOK[] = "JDG_AOK\0";
 
 typedef struct {
-	// Shared pipe file descriptors
-	int fd[2];
+	// Unique identifier for each judge
+	char id[64];
 	
+	// Judge process' pid
+	int pid;
+
 	// Source code file path
 	char *source_path;
 
@@ -46,6 +57,12 @@ typedef struct {
 	// Username of submitted file's owner
 	char user[MAX_FILENAME_LEN];
 
+	// Assignment number
+	char ass_num[2<<5];
+
+	// To keep track of time of creation 
+	struct timeval time_struct;
+	
 	// Number of input files
 	int num_input_files;
 
