@@ -153,21 +153,34 @@ void clean_and_exit(int code) {
 
 /******************************* Helpers ***********************************/
 /*
-** Writes acknowledgement (<user><delimiter><judge_id><delimiter><ack_code>\0)
+** Writes acknowledgement (<2-byte message length><delimiter><judge_id><delimiter><ack_code>\0)
 ** onto the pipe.
 */
-void send_ack(int pipe_fd, const char *ack_str, char *user, char *judge_id) {
+void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
+    
+    // Compute size of the second and third bits + null terminators
+    int size = strlen(ack_str) + strlen(judge_id) + 3 /* delimiters */;
+
+    // Add the length of the size itself
+    int size_len = 1;
+    if (size > 8) size_len = 2;
+    size += size_len;
+
 	// Allocate space for the message
-	char *buf = (char *) malloc(strlen(ack_str) + strlen(user) + strlen(judge_id) + 3);
+	char *buf = (char *) malloc(size);
 	
-	// Concat the user, judge_id and acknowledgement string
-	strcpy(buf, user);
-	strcpy(buf + strlen(user) + 1, judge_id);
-	strcpy(buf + strlen(user) + strlen(judge_id) + 2, ack_str);
+
+	// Concat the message length, judge_id and acknowledgement string
+	sprintf(buf, "%d", size);
+	strcpy(buf + size_len + 1, judge_id);
+	strcpy(buf + size_len + strlen(judge_id) + 2, ack_str);
 
 	// Change null terminators to delimiters
-	buf[strlen(user)] = DELIM;
-	buf[strlen(user) + 1 + strlen(judge_id)] = DELIM;
+	buf[size_len] = DELIM;
+	buf[size_len + 1 + strlen(judge_id)] = DELIM;
+    buf[size-1] = DELIM;
+        
+    printf("CHECKING PIPE[%s]\n", buf);
 
 	// Write the message to the pipe
 	write(pipe_fd, buf, strlen(buf));
@@ -212,10 +225,10 @@ int main(int argc, char **argv) {
 	// Write compilation result code to pipe, exit if errored
 	if (comp_result) {
 		if (DEBUG) printf("%sCompilation failed - Exiting%s\n", FILLER, FILLER);
-		send_ack(pipe_fd, CMP_ERR, user, judge_id);
+		send_ack(pipe_fd, CMP_ERR, judge_id);
 		clean_and_exit(EXIT_FAILURE);
 	} else {
-		send_ack(pipe_fd, CMP_AOK, user, judge_id);
+		send_ack(pipe_fd, CMP_AOK, judge_id);
 	}
 
 	for (int i=0; i<num_input_files; i++) {
@@ -223,28 +236,25 @@ int main(int argc, char **argv) {
 		// Run and exit if errored
 		if (run_program(user, ass_num, input_files[i])) {
 			if (DEBUG) printf("%sRun #%d failed - Exiting%s\n", i, FILLER, FILLER);
-			send_ack(pipe_fd, RUN_ERR, user, judge_id);
+			send_ack(pipe_fd, RUN_ERR, judge_id);
 			clean_and_exit(EXIT_FAILURE);
 		}
 
-		send_ack(pipe_fd, RUN_AOK, user, judge_id);
+		send_ack(pipe_fd, RUN_AOK, judge_id);
 
 		// Judge the output against master
 		if (judge(user, ass_num, input_files[i])) {
 			if (DEBUG) printf("%sFailed test case #%d - Exiting%s\n", i, FILLER, FILLER);
-			send_ack(pipe_fd, CHK_ERR, user, judge_id);
+			send_ack(pipe_fd, CHK_ERR, judge_id);
 			clean_and_exit(EXIT_FAILURE);
 		}
 
-		send_ack(pipe_fd, CHK_AOK, user, judge_id);
+		send_ack(pipe_fd, CHK_AOK, judge_id);
 	
 	}
 
-	// TODO: get rid of this travesty before someone sees it
-	usleep(100000);
-
 	// Send judge over ack
-	send_ack(pipe_fd, JDG_AOK, user, judge_id);
+	send_ack(pipe_fd, JDG_AOK, judge_id);
 
 	// Restore stdout and stderr and exit 
 	clean_and_exit(EXIT_SUCCESS);

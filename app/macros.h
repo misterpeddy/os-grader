@@ -32,6 +32,7 @@
 
 /* Receiver macros */
 #define MAX_NUM_THREADS 16
+#define MILLI 1000000
 
 const char CMP_AOK[] = "CMP_AOK\0";
 const char CMP_ERR[] = "CMP_ERR\0";

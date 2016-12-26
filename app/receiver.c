@@ -74,59 +74,6 @@ int init_judge(Judge *judge)
 	return 0;	
 }
 
-void destruct_judge(Judge *judge) 
-{
-	free(judge->source_path);
-	for (int i=0; i<judge->num_input_files; i++) {
-		free(judge->input_files[i]);
-	}
-	free(judge->input_files);
-}
-
-void listen_to_judges()
-{
-	while (1) {
-		// Block until receive ack
-		int nbytes, pipe_in = fd[0];
-		char message[MAX_PACKET_SIZE];
-		memset(&message, 0, MAX_PACKET_SIZE);
-		nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
-		
-		if (nbytes > 0) { 
-
-			// Set up to parse message
-			char *user, *judge_id, *ack_code, *token_state;
-			char delimiter[2];
-			delimiter[0] = DELIM; 
-
-			// Parse the message
-			user = strtok_r(message, delimiter, &token_state);
-			judge_id = strtok_r(NULL, " *", &token_state);
-			ack_code = strtok_r(NULL, " *", &token_state);
-			
-			if (DEBUG) printf("Received[%s][%s][%s] (%d bytes)\n", user, judge_id, ack_code, nbytes);
-
-			// Act on the response
-			if (!strcmp(ack_code, &JDG_AOK)) printf("DONE1\n");
-			if (!strcmp(ack_code, &CHK_ERR)) printf("DONE2\n");
-			if (!strcmp(ack_code, &RUN_ERR)) printf("DONE3\n");
-			if (!strcmp(ack_code, &CMP_ERR)) printf("DONE4\n");
-
-
-		} else {
-			if (DEBUG) printf("Received Faulty message of length [%d]\n", nbytes);			
-			usleep(100000);
-		}
-	}
-}
-
-void alarm_handler(int signal) {
-	if (signal == SIGALRM) {
-		if (DEBUG) printf("A judge process timed out - Exiting\n");
-		//kill(child_pid, SIGKILL);
-	}
-}
-
 int add_judge(Judge *judge) {
 	int i=0;
 	while (i<MAX_JUDGES) {
@@ -137,6 +84,114 @@ int add_judge(Judge *judge) {
 		i++;
 	}	
 	return 1;
+}
+
+Judge *get_judge(char *id_str) {
+	for (int i=0; i<MAX_JUDGES; i++) {
+		if (active_judges[i] && !strcmp(active_judges[i]->id, id_str))
+			return active_judges[i];
+	}
+	return NULL;
+}
+
+void destruct_judge(Judge *judge) 
+{
+	// Free all input file paths
+	for (int i=0; i<judge->num_input_files; i++) {
+		free(judge->input_files[i]);
+	}
+	
+	// Free input file array
+	free(judge->input_files);
+
+	// Free source path
+	free(judge->source_path);
+
+	// Remove from active judges
+	for (int i=0; i<MAX_JUDGES; i++) {
+		if (active_judges[i] && !strcmp(active_judges[i]->id, judge->id))
+			active_judges[i] = NULL;
+	}
+}
+
+void listen_to_judges()
+{
+	while (1) {
+		// Block until receive ack
+		int nbytes, pipe_in = fd[0], bytes_read = 0;
+		char *message = (char *)malloc(MAX_PACKET_SIZE);
+		memset(message, 0, MAX_PACKET_SIZE);
+		nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
+
+		while (nbytes > bytes_read) {  
+
+			// Set up to parse message
+			char *size, *judge_id, *ack_code, *token_state;
+			char delimiter[2];
+			delimiter[0] = DELIM; 
+
+			// Parse the message
+			size = strtok_r(message, delimiter, &token_state);
+			judge_id = strtok_r(NULL, " *", &token_state);
+			ack_code = strtok_r(NULL, " *", &token_state);
+
+            bytes_read += atoi(size);
+            message = message + bytes_read;
+            printf("READ [%d bytes]\n", bytes_read);
+			
+			if (DEBUG) printf("Received[%s][%s][%s] (%d bytes)\n", size, judge_id, ack_code, nbytes);
+
+			// Act on the response
+			if (!strcmp(ack_code, &JDG_AOK) ||
+				!strcmp(ack_code, &CMP_ERR)||
+				!strcmp(ack_code, &RUN_ERR)||
+				!strcmp(ack_code, &CHK_ERR)) {
+
+				// Find out which judge sent the response
+				Judge *judge = get_judge(judge_id);
+
+				if (judge) {
+					// TODO: Record the result in database
+					if (DEBUG) 
+						printf("Judge with pid (%d) for user (%s) is Done\n",
+						judge->pid, &judge->user);
+					
+					destruct_judge(judge);
+					free(judge);
+				}
+			}
+        }
+	}
+    //free(message);
+}
+
+void alarm_handler(int signal) {
+	if (signal != SIGALRM) {
+        return;
+    }
+
+    // Get current time
+    struct timeval start, end;
+    int lifetime;
+    gettimeofday(&end, NULL);
+    
+    // Find processes that have maxed out their time limitation
+    for (int i=0; i<MAX_JUDGES; i++) {
+        if (active_judges[i]) {
+            start = active_judges[i]->time_struct;
+            lifetime = (end.tv_sec*MILLI + end.tv_usec)-(start.tv_sec*MILLI + start.tv_usec);	
+
+            // Check if process has maxed out
+            if (lifetime > MAX_TIME_ALLOWED * MILLI) {
+
+                if (DEBUG) printf("Judge process (%d) for user (%s) timed out - Exiting\n", 
+                    active_judges[i]->pid, &active_judges[i]->user);		
+
+                // Kill the process
+                kill(active_judges[i]->pid, SIGKILL);
+            } 
+        }
+    }
 }
 
 void handle_request() {
@@ -175,7 +230,7 @@ int main(int argc, char **argv) {
 	
 	// Spawn a thread to listen on judges pipe
 	pthread_t pipe_listener_thread;
-	pthread_create(&pipe_listener_thread, NULL, &listen_to_judges, NULL);
+	pthread_create(&pipe_listener_thread, NULL, (void *)&listen_to_judges, NULL);
 
 	// Set up the mutex locks 
 	if (pthread_mutex_init(&inc_lock, NULL) || 
@@ -188,6 +243,12 @@ int main(int argc, char **argv) {
 
 	// while something
 	// if something happens
+	handle_request();
+    usleep(MILLI);
+	handle_request();
+    usleep(MILLI);
+	handle_request();
+    usleep(MILLI);
 	handle_request();
 
 	while(1);
