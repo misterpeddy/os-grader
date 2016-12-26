@@ -1,12 +1,13 @@
 CC=gcc
 CFLAGS=-w
+LIBS=-pthread
 
 all: receiver judge
 
 receiver: receiver.c macros.h
-	$(CC) -w -pthread receiver.c macros.h -o receiver
+	$(CC) $(CFLAGS) $(LIBS) receiver.c macros.h -o receiver
 judge: judge.c macros.h
-	$(CC) -w $(CFLAGS) judge.c macros.h -o judge
+	$(CC) $(CFLAGS) judge.c macros.h -o judge
 clean:
 	rm -rf *o *gch
 

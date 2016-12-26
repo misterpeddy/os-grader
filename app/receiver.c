@@ -152,13 +152,11 @@ void listen_to_judges()
 
 			// Set up to parse message
 			char *size, *judge_id, *ack_code, *token_state;
-			char delimiter[2];
-			delimiter[0] = DELIM; 
 
 			// Parse the message
-			size = strtok_r(message, delimiter, &token_state);
-			judge_id = strtok_r(NULL, " *", &token_state);
-			ack_code = strtok_r(NULL, " *", &token_state);
+			size = strtok_r(message, DELIM, &token_state);
+			judge_id = strtok_r(NULL, DELIM, &token_state);
+			ack_code = strtok_r(NULL, DELIM, &token_state);
 
             bytes_read += atoi(size);
             message = message + bytes_read;
@@ -167,10 +165,8 @@ void listen_to_judges()
 			if (DEBUG) printf("Received[%s][%s][%s] (%d bytes)\n", size, judge_id, ack_code, nbytes);
 
 			// Act on the response
-			if (!strcmp(ack_code, &JDG_AOK) ||
-				!strcmp(ack_code, &CMP_ERR)||
-				!strcmp(ack_code, &RUN_ERR)||
-				!strcmp(ack_code, &CHK_ERR)) {
+			if (!strcmp(ack_code, &JDG_AOK) || !strcmp(ack_code, &CMP_ERR) ||
+				  !strcmp(ack_code, &RUN_ERR) || !strcmp(ack_code, &CHK_ERR)) {
 
 				// Find out which judge sent the response
 				Judge *judge = get_judge(judge_id);
@@ -185,9 +181,9 @@ void listen_to_judges()
 					free(judge);
 				}
 			}
-        }
+    }
 	}
-    //free(message);
+  //TODO: free(message) in final destructor 
 }
 
 /******************************* Handlers ***********************************/
@@ -248,9 +244,6 @@ void handle_request() {
 	} else {
 		judge->pid = pid;
 
-		if (signal(SIGALRM, alarm_handler) == SIG_ERR && DEBUG)
-			printf("Could not register alarm listener\n");	
-
 		alarm(MAX_TIME_ALLOWED);
 	}
 }
@@ -267,6 +260,10 @@ int main(int argc, char **argv) {
 	// Set up shared pipe
 	pipe(fd);
 	
+    // Set up alarm listener
+    if (signal(SIGALRM, alarm_handler) == SIG_ERR && DEBUG)
+        printf("Could not register alarm listener\n");	
+
 	// Spawn a thread to listen on judges pipe
 	pthread_t pipe_listener_thread;
 	pthread_create(&pipe_listener_thread, NULL, (void *)&listen_to_judges, NULL);
