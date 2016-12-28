@@ -4,7 +4,7 @@
 #include <sys/time.h>
 
 /* Shared macros */
-#define DEBUG 1 
+#define DEBUG 1
 #define FILLER "*****"
 #define DELIM "*"
 #define MAX_FILENAME_LEN 128
@@ -15,7 +15,7 @@
 /* Judge macros */
 #define MAX_ARGS 8
 #define MAX_ENVS 8
-#define FD_MAX 2<<5
+#define FD_MAX 2 << 5
 #define MAX_TIME_ALLOWED 3
 #define MAX_JUDGES 32
 
@@ -43,38 +43,38 @@ const char CHK_ERR[] = "CHK_ERR\0";
 const char JDG_AOK[] = "JDG_AOK\0";
 
 typedef struct {
-	// Unique identifier for each judge
-	char id[64];
-	
-	// Judge process' pid
-	int pid;
+  // Unique identifier for each judge
+  char id[64];
 
-	// Source code file path
-	char *source_path;
+  // Judge process' pid
+  int pid;
 
-	// C string containing pipe write-end fd 
-	char fd_w[FD_MAX];
+  // Source code file path
+  char *source_path;
 
-	// Username of submitted file's owner
-	char user[MAX_FILENAME_LEN];
+  // C string containing pipe write-end fd
+  char fd_w[FD_MAX];
 
-	// Assignment number
-	char ass_num[2<<5];
+  // Username of submitted file's owner
+  char user[MAX_FILENAME_LEN];
 
-	// To keep track of time of creation 
-	struct timeval time_struct;
-	
-	// Number of input files
-	int num_input_files;
+  // Assignment number
+  char ass_num[2 << 5];
 
-	// Path to the input files or NULL
-	char **input_files;
-	
-	// Command line argument
-	char *exec_args[2<<5];
+  // To keep track of time of creation
+  struct timeval time_struct;
 
-	// Environment variables
-	char *exec_envs[2<<5];
+  // Number of input files
+  int num_input_files;
+
+  // Path to the input files or NULL
+  char **input_files;
+
+  // Command line argument
+  char *exec_args[2 << 5];
+
+  // Environment variables
+  char *exec_envs[2 << 5];
 } Judge;
 
 #endif
