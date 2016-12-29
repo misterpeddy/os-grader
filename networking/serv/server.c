@@ -1,12 +1,14 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define PORT 31337
 #define ARG_DELIM ":"
 #define TCP_PACKET_SIZE 4096
 #define HEADER_PREFIX "FBEGIN"
+#define MAX_WAITING_CONNECTIONS 5
 
 int parse_arguments(char **args, char *line) {
   int i = 0;
@@ -19,82 +21,107 @@ int parse_arguments(char **args, char *line) {
 setup_socket() {}
 
 int do_everything() {
-  char *header[TCP_PACKET_SIZE];
-  char recvBUFF[TCP_PACKET_SIZE];
 
-  int listenSOCKET, connectSOCKET;
-  socklen_t clientADDRESSLENGTH;
-  struct sockaddr_in clientADDRESS, serverADDRESS;
-  char *filename, *filesize;
-  FILE *recvFILE;
-  int received = 0;
-  char tempstr[TCP_PACKET_SIZE];
+  int listen_queue_socket, connection_socket;
+  socklen_t client_address_len;
+  struct sockaddr_in client_address, server_address;
 
-  int count1 = 1, count2 = 1, percent;
 
-  listenSOCKET = socket(AF_INET, SOCK_STREAM, 0);
-  if (listenSOCKET < 0) {
+  // Create socket to listen for incoming connections
+  listen_queue_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (listen_queue_socket < 0) {
     printf("Cannot create socket\n");
-    close(listenSOCKET);
+    close(listen_queue_socket);
     return 1;
   }
+  printf("Created socket\n");
 
-  serverADDRESS.sin_family = AF_INET;
-  serverADDRESS.sin_addr.s_addr = htonl(INADDR_ANY);
-  serverADDRESS.sin_port = htons(PORT);
+  server_address.sin_family = AF_INET;
+  server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+  server_address.sin_port = htons(PORT);
 
-  if (bind(listenSOCKET, (struct sockaddr *)&serverADDRESS,
-           sizeof(serverADDRESS)) < 0) {
+  // Bind the socket to server_address
+  if (bind(listen_queue_socket, (struct sockaddr *)&server_address,
+           sizeof(server_address)) < 0) {
     printf("Cannot bind socket\n");
-    close(listenSOCKET);
+    close(listen_queue_socket);
     return 1;
   }
+  printf("Bound socket\n");
 
-  listen(listenSOCKET, 5);
-  clientADDRESSLENGTH = sizeof(clientADDRESS);
-  connectSOCKET = accept(listenSOCKET, (struct sockaddr *)&clientADDRESS,
-                         &clientADDRESSLENGTH);
-  if (connectSOCKET < 0) {
+  // Listen for new connections
+  printf("Listening for connections on port %d\n", PORT);
+  listen(listen_queue_socket, MAX_WAITING_CONNECTIONS);
+
+  // Accept new connections, move them to connection_socket
+  client_address_len = sizeof(client_address);
+  connection_socket =
+      accept(listen_queue_socket, (struct sockaddr *)&client_address,
+             &client_address_len);
+  printf("Accepted connection\n");
+
+  // Make sure connection socket descriptor is valid
+  if (connection_socket < 0) {
     printf("Cannot accept connection\n");
-    close(listenSOCKET);
+    close(listen_queue_socket);
     return 1;
   }
-  while (1) {
-    if (recv(connectSOCKET, recvBUFF, sizeof(recvBUFF), 0)) {
-      if (!strncmp(recvBUFF, HEADER_PREFIX, 6)) {
-        recvBUFF[strlen(recvBUFF) - 2] = 0;
-        parse_arguments(header, recvBUFF);
-        filename = header[1];
-        filesize = header[2];
-      }
-      recvBUFF[0] = 0;
-      recvFILE = fopen(filename, "w");
-      percent = atoi(filesize) / 100;
-      while (1) {
-        if (recv(connectSOCKET, recvBUFF, 1, 0) != 0) {
-          fwrite(recvBUFF, sizeof(recvBUFF[0]), 1, recvFILE);
+  printf("Connection is valid - retrieving header\n");
 
-          if (count1 == count2) {
-            printf("Filename: %s\n", filename);
-            printf("Filesize: %d Kb\n", atoi(filesize) / 1024);
-            printf("Percent : %d%% ( %d Kb)\n", count1 / percent,
-                   count1 / 1024);
-            count1 += percent;
-          }
-          count2++;
-          received++;
-          recvBUFF[0] = 0;
-        } else {
-          close(listenSOCKET);
-          return 0;
-        }
-      }
-      close(listenSOCKET);
+  // Receive the header_tokens and write the file
+  char receive_buffer[TCP_PACKET_SIZE];
+  if (recv(connection_socket, receive_buffer, sizeof(receive_buffer), 0)) {
+    
+    char *header_tokens[TCP_PACKET_SIZE];
+    char *user, *ass_num, *filename, *filesize;
+
+    // Make sure the first packet is the header data
+    if (!strncmp(receive_buffer, HEADER_PREFIX, strlen(HEADER_PREFIX))) {
+
+      // Parse the header and capture data
+      parse_arguments(header_tokens, receive_buffer);
+      user = header_tokens[1];
+      ass_num = header_tokens[2];
+      filename = header_tokens[3];
+      filesize = header_tokens[4];
+    
     } else {
-      printf("Client dropped connection\n");
+      // Print error message and exit
+      printf("Failed to received header - first packet content: [%s]\n",
+             receive_buffer);
+      close(connection_socket);
+      close(listen_queue_socket);
+      exit(EXIT_FAILURE);
     }
 
-    return 0;
+    printf("Retreived and parsed header information\n");
+
+    // Open file to write to 
+    FILE *file_to_write = fopen(filename, "w");
+    int bytes_received, bytes_remaining = atoi(filesize);
+
+    printf("Opened file to write to\n");
+
+    // Listen until no more packets are being sent
+    while ((bytes_received = recv(connection_socket, receive_buffer, TCP_PACKET_SIZE, 0)) != 0) {
+
+      // Write the received packet of data to the file
+      fwrite(receive_buffer, sizeof(receive_buffer[0]), bytes_received,
+             file_to_write);
+
+      bytes_remaining -= bytes_received;
+    }
+
+    printf("Succesfully retrieved file\n");
+
+    // Make sure we received the number of bytes we expected
+    if (bytes_remaining != 0) {
+      printf("Warning - Expected %d bytes, received %d bytes\n");
+    }
+
+    close(listen_queue_socket);
+  } else {
+    printf("Client dropped connection\n");
   }
 }
 
