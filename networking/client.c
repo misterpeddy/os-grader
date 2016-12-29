@@ -9,7 +9,9 @@
 #define HEADER_PREFIX "FBEGIN"
 #define TCP_PACKET_SIZE 4096
 
-int fileSEND(char *server, int PORT, char *lfile, char *rfile, char *user,
+const char RCV_AOK[] = "RCV_AOK";
+
+int send_file(char *server, int PORT, char *lfile, char *rfile, char *user,
              char *ass_num) {
   int socketDESC;
   struct sockaddr_in serverADDRESS;
@@ -87,7 +89,19 @@ int fileSEND(char *server, int PORT, char *lfile, char *rfile, char *user,
     remaining -= buff_size;
   }
 
-  printf("Finished sending file content\n");
+  printf("Finished sending file content\nwaiting for confirmation from server\n");
+  memset(&buffer, 0, TCP_PACKET_SIZE);
+  if (recv(socketDESC, buffer, sizeof(buffer), 0) < 1) {
+    printf("Server did not receive file - Exiting\n");
+    exit(EXIT_FAILURE);
+  }
+
+  if (!strncmp(buffer, RCV_AOK, strlen(RCV_AOK))) {
+    printf("Server succesfully received file\n");
+  } else {
+    printf("Server did not receive file - Exiting\n");
+    exit(EXIT_FAILURE);
+  }
 
   fclose(file_to_send);
   close(socketDESC);
@@ -95,7 +109,21 @@ int fileSEND(char *server, int PORT, char *lfile, char *rfile, char *user,
   return 0;
 }
 
-int main() {
-  fileSEND("localhost", 31337, "a.txt", "b.txt", "pp5nv", "2");
+int main(int argc, char **argv) {
+
+  // Make sure we got the right number of arguments
+  if (argc != 4) {
+    printf("USAGE: %s <user> <ass_num> <file to submit>\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  const char *server_address = "localhost";
+  const int port_number = 31337;
+  const char *file_to_send = argv[3];
+  const char *rename_file_to = argv[3];
+  const char *user = argv[1];
+  const char *ass_num = argv[2];
+
+  send_file(server_address, port_number, file_to_send, rename_file_to, user, ass_num);
   return 0;
 }

@@ -1,8 +1,10 @@
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define PORT 31337
 #define ARG_DELIM ":"
@@ -10,25 +12,25 @@
 #define HEADER_PREFIX "FBEGIN"
 #define MAX_WAITING_CONNECTIONS 5
 
+const char RCV_AOK[] = "RCV_AOK";
+
+/*
+** Parses the header of the request and returns an array of tokens
+*/
 int parse_arguments(char **args, char *line) {
   int i = 0;
   args[i] = strtok(line, ARG_DELIM);
-  while ((args[++i] = strtok(NULL, ARG_DELIM)) != NULL)
-    ;
+  while ((args[++i] = strtok(NULL, ARG_DELIM)) != NULL);
   return i - 1;
 }
 
-setup_socket() {}
-
-int do_everything() {
-
-  int listen_queue_socket, connection_socket;
-  socklen_t client_address_len;
-  struct sockaddr_in client_address, server_address;
-
-
+/*
+** Sets up listen queue socket and returns its file descriptor
+*/
+int set_up_listen_queue() {
+  
   // Create socket to listen for incoming connections
-  listen_queue_socket = socket(AF_INET, SOCK_STREAM, 0);
+  int listen_queue_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_queue_socket < 0) {
     printf("Cannot create socket\n");
     close(listen_queue_socket);
@@ -36,6 +38,7 @@ int do_everything() {
   }
   printf("Created socket\n");
 
+  struct sockaddr_in server_address;
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = htonl(INADDR_ANY);
   server_address.sin_port = htons(PORT);
@@ -47,26 +50,46 @@ int do_everything() {
     close(listen_queue_socket);
     return 1;
   }
-  printf("Bound socket\n");
+  printf("Bound socket\n\n");
+  return listen_queue_socket;
+}
 
+/*
+** Blocks and waits for a client to make a request
+** Upon receipt, moves the connection to a new socket and returns its fd
+*/
+int listen_for_requests(int listen_queue_socket) {
+  int connection_socket;
+  socklen_t client_address_len;
+  struct sockaddr_in client_address; 
+  
   // Listen for new connections
-  printf("Listening for connections on port %d\n", PORT);
-  listen(listen_queue_socket, MAX_WAITING_CONNECTIONS);
+  printf("Listening for connections on port %d...\n", PORT);
+  if (listen(listen_queue_socket, MAX_WAITING_CONNECTIONS) < 0) {
+    printf("Could not listen on socket with fd %d on port %d - Exiting\n", listen_queue_socket, PORT);
+    exit(EXIT_FAILURE);
+  }
 
   // Accept new connections, move them to connection_socket
   client_address_len = sizeof(client_address);
   connection_socket =
       accept(listen_queue_socket, (struct sockaddr *)&client_address,
              &client_address_len);
-  printf("Accepted connection\n");
 
+  return connection_socket;
+}
+
+/* 
+** Actually does the job of receiving the request data from the client
+** Returns 0 for no errors and 1 if any errors occur.
+*/
+int handle_connection(int connection_socket) {
   // Make sure connection socket descriptor is valid
   if (connection_socket < 0) {
-    printf("Cannot accept connection\n");
-    close(listen_queue_socket);
     return 1;
   }
-  printf("Connection is valid - retrieving header\n");
+
+  printf("Valid connection has been established - retrieving header\n");
 
   // Receive the header_tokens and write the file
   char receive_buffer[TCP_PACKET_SIZE];
@@ -90,39 +113,58 @@ int do_everything() {
       printf("Failed to received header - first packet content: [%s]\n",
              receive_buffer);
       close(connection_socket);
-      close(listen_queue_socket);
-      exit(EXIT_FAILURE);
+      return 1;
     }
 
     printf("Retreived and parsed header information\n");
 
-    // Open file to write to 
-    FILE *file_to_write = fopen(filename, "w");
+    // Open file to write to and
+    FILE *file_to_write = open(filename, O_WRONLY | O_TRUNC | O_CREAT, 00664);
     int bytes_received, bytes_remaining = atoi(filesize);
 
     printf("Opened file to write to\n");
 
-    // Listen until no more packets are being sent
-    while ((bytes_received = recv(connection_socket, receive_buffer, TCP_PACKET_SIZE, 0)) != 0) {
+    // Listen until file is received or no more packets are being sent
+    while ((bytes_remaining > 0) && 
+        ((bytes_received = recv(connection_socket, receive_buffer, TCP_PACKET_SIZE, 0)) > 0)) {
 
       // Write the received packet of data to the file
-      fwrite(receive_buffer, sizeof(receive_buffer[0]), bytes_received,
-             file_to_write);
+      write(file_to_write, receive_buffer, bytes_received);
 
       bytes_remaining -= bytes_received;
     }
 
-    printf("Succesfully retrieved file\n");
-
     // Make sure we received the number of bytes we expected
-    if (bytes_remaining != 0) {
-      printf("Warning - Expected %d bytes, received %d bytes\n");
+    if (!bytes_remaining) {
+      printf("Succesfully retrieved file\n\n");
+    } else {
+      printf("Warning - Expected %d bytes, received %d bytes\n\n");
     }
 
-    close(listen_queue_socket);
+    close(file_to_write);
+
+    // Send ack to client
+    send(connection_socket, RCV_AOK, strlen(RCV_AOK), 0);
+
+    // Close client connection
+    close(connection_socket);
   } else {
-    printf("Client dropped connection\n");
+    printf("Client dropped connection\n\n");
   }
 }
 
-int main() { do_everything(); }
+int main() { 
+
+  // Set up initial socket for listen queue
+  int listen_queue_socket = set_up_listen_queue();
+
+  while (1) {
+    
+    // Block and listen for connections - upon receipt, move connection to new socket
+    int connection_socket = listen_for_requests(listen_queue_socket);
+
+    // Let the handler receive request data
+    // TODO: Move this to a new thread
+    handle_connection(connection_socket);
+  }
+}
