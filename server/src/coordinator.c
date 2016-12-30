@@ -236,9 +236,16 @@ void handle_request() {
     // Close reading end since executor will not read from the pipe
     close(fd[0]);
 
-    if (DEBUG) printf("Starting Judge\n");
-    execv(JUDGE, judge->exec_args);
-    perror("||execve||");
+    // Locate judge binary
+    char judge_bin[MAX_FILENAME_LEN];
+    memset(&judge_bin, 0, MAX_FILENAME_LEN);
+    strcpy(&judge_bin, BIN_ROOT);
+    strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
+
+    // Run the judge binary
+    if (DEBUG) printf("Starting Judge [%s]\n", judge_bin);
+    execv(judge_bin, judge->exec_args);
+    perror("exec failure");
     exit(EXIT_FAILURE);
   } else {
     judge->pid = pid;
@@ -250,11 +257,13 @@ void handle_request() {
 /******************************* Main ***********************************/
 
 /*
-** Initializes relevant entities
 ** Starts listening for new connections, and handles incoming requests.
 */
 int main(int argc, char **argv) {
   // TODO:Read settings file and initialize assignments DS
+
+  // Change current working directory to root of the application
+  chdir(APP_ROOT);
 
   // Set up shared pipe
   pipe(fd);

@@ -97,7 +97,7 @@ int run_program(char *user, char *ass_num, char *input_file) {
   char command[MAX_COMMAND_LEN];
   memset(&command, 0, MAX_COMMAND_LEN);
   if (input_file) {
-    sprintf(&command, "./%s/%s/%s < %s/%s/%s", user, ass_num, BIN, MASTER_DIR,
+    sprintf(&command, "./%s/%s/%s < %s/%s/%s", user, ass_num, BIN, MODULES,
             ass_num, input_file);
   } else {
     sprintf(&command, "./%s/%s/%s", user, ass_num, BIN);
@@ -134,7 +134,7 @@ int judge(char *user, char *ass_num, char *input_file) {
 
   // Set up master file path
   char master_file[MAX_FILENAME_LEN];
-  sprintf(&master_file, "%s/%s/%s_%s", MASTER_DIR, ass_num, OUTFILE_SUFFIX,
+  sprintf(&master_file, "%s/%s/%s_%s", MODULES, ass_num, OUTFILE_SUFFIX,
           input_file);
 
   // Execute the diff and write to the diff file

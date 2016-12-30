@@ -25,15 +25,20 @@
 
 #define OUTFILE_SUFFIX "out"
 #define BIN "bin"
-#define MASTER_DIR "master"
+#define MODULES "modules"
 #define SANDBOX "sandbox"
 #define JUDGE "judge"
-#define TEMP "temp"
+#define TEMP "tmp"
 
 /* Receiver macros */
 #define MAX_NUM_THREADS 16
 #define MILLI 1000000
 
+/* Settings */
+const char APP_ROOT[] = "/home/pedram/repos/os-grader/server/";
+const char BIN_ROOT[] = "/home/pedram/repos/os-grader/server/bin/";
+
+//TODO: remove null terminator
 const char CMP_AOK[] = "CMP_AOK\0";
 const char CMP_ERR[] = "CMP_ERR\0";
 const char RUN_AOK[] = "RUN_AOK\0";
