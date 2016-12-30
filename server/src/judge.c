@@ -21,6 +21,9 @@ char diff_file[MAX_FILENAME_LEN];
 void init_sandbox(char *user, char *ass_num) {
   if (DEBUG) printf("%sJudge Started%s\n", FILLER, FILLER);
 
+  // Change current working directory to the submissions folder
+  chdir(SUB);
+
   // Create user directory if does not exist already
   char command1[MAX_COMMAND_LEN];
   sprintf(&command1, "mkdir %s", user);
@@ -65,7 +68,7 @@ int compile_source(char *filename, char *user, char *ass_num) {
   // Compile source
   char command[MAX_COMMAND_LEN];
   memset(&command, 0, MAX_COMMAND_LEN);
-  sprintf(&command, "gcc -w %s/%s -o %s/%s/%s", TEMP, filename, user, ass_num,
+  sprintf(&command, "gcc -w ../%s/%s -o %s/%s/%s", TEMP, filename, user, ass_num,
           BIN);
   if (DEBUG) printf("$(%s)\n", command);
   system(command);
@@ -82,7 +85,7 @@ int compile_source(char *filename, char *user, char *ass_num) {
 }
 
 /*
-** Runs the program user/ass_num/bin with input master/ass_num/input_file
+** Runs the program submissions/<user>/<ass_num>/bin with input modules/<ass_num>/input_file
 */
 int run_program(char *user, char *ass_num, char *input_file) {
   if (DEBUG)
@@ -97,7 +100,7 @@ int run_program(char *user, char *ass_num, char *input_file) {
   char command[MAX_COMMAND_LEN];
   memset(&command, 0, MAX_COMMAND_LEN);
   if (input_file) {
-    sprintf(&command, "./%s/%s/%s < %s/%s/%s", user, ass_num, BIN, MODULES,
+    sprintf(&command, "./%s/%s/%s < ../%s/%s/%s", user, ass_num, BIN, MODULES,
             ass_num, input_file);
   } else {
     sprintf(&command, "./%s/%s/%s", user, ass_num, BIN);
@@ -120,7 +123,7 @@ int run_program(char *user, char *ass_num, char *input_file) {
 
 /*
 ** Compares the following 2 files:
-** <user>/<ass_num>/<user>_<ass_num>_out_<input_file>
+** submissions/<user>/<ass_num>/<user>_<ass_num>_out_<input_file>
 ** master/<ass_num>/out_<input_file>
 */
 int judge(char *user, char *ass_num, char *input_file) {
@@ -134,7 +137,7 @@ int judge(char *user, char *ass_num, char *input_file) {
 
   // Set up master file path
   char master_file[MAX_FILENAME_LEN];
-  sprintf(&master_file, "%s/%s/%s_%s", MODULES, ass_num, OUTFILE_SUFFIX,
+  sprintf(&master_file, "../%s/%s/%s_%s", MODULES, ass_num, OUTFILE_SUFFIX,
           input_file);
 
   // Execute the diff and write to the diff file
@@ -257,7 +260,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < num_input_files; i++) {
     // Run and exit if errored
     if (run_program(user, ass_num, input_files[i])) {
-      if (DEBUG) printf("%sRun #%d failed - Exiting%s\n\n", i, FILLER, FILLER);
+      if (DEBUG) printf("%sRun #%d failed - Exiting%s\n\n", FILLER, i, FILLER);
       send_ack(pipe_fd, RUN_ERR, judge_id);
       clean_and_exit(EXIT_FAILURE);
     }
@@ -267,7 +270,7 @@ int main(int argc, char **argv) {
     // Judge the output against master
     if (judge(user, ass_num, input_files[i])) {
       if (DEBUG)
-        printf("%sFailed test case #%d - Exiting%s\n\n", i, FILLER, FILLER);
+        printf("%sFailed test case #%d - Exiting%s\n\n", FILLER, i, FILLER);
       send_ack(pipe_fd, CHK_ERR, judge_id);
       clean_and_exit(EXIT_FAILURE);
     }

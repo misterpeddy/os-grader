@@ -1,26 +1,6 @@
-#include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-
-#define PORT 31337
-#define ARG_DELIM ":"
-#define TCP_PACKET_SIZE 4096
-#define HEADER_PREFIX "FBEGIN"
-#define MAX_WAITING_CONNECTIONS 5
-#define MAX_FILENAME_LEN 64
+#include "server.h"
 
 const char RCV_AOK[] = "RCV_AOK";
-
-typedef struct {
-  char *user;
-  char *ass_num;
-  char *filename;
-  int socket_fd;
-} Request;
 
 /*
 ** Parses the header of the request and returns an array of tokens
@@ -123,7 +103,7 @@ int listen_for_requests(int listen_queue_socket) {
 ** Actually does the job of receiving the request data from the client
 ** Returns 0 for no errors and 1 if any errors occur.
 */
-int handle_connection(Request *request) {
+int receive_request(Request *request) {
 
   int connection_socket = request->socket_fd;
 
@@ -147,10 +127,10 @@ int handle_connection(Request *request) {
 
       // Parse the header and capture data
       parse_arguments(header_tokens, receive_buffer);
-      request->user = header_tokens[1];
-      request->ass_num = header_tokens[2];
+      strcpy(request->user, header_tokens[1]);
+      strcpy(request->ass_num, header_tokens[2]);
       bytes_remaining = atoi(header_tokens[3]);
-      request->filename = generate_filename(&new_filename, request->user, request->ass_num);
+      strcpy(request->filename, generate_filename(&new_filename, request->user, request->ass_num));
     
     } else {
       // Print error message and exit
@@ -162,8 +142,13 @@ int handle_connection(Request *request) {
 
     printf("Retreived and parsed header information\n");
 
+    // Compute path of file to write
+    char filepath[MAX_FILENAME_LEN];
+    strcpy(&filepath, TEMP);
+    strcpy(&filepath[strlen(TEMP)], request->filename);
+
     // Open file to write to and
-    FILE *file_to_write = open(request->filename, O_WRONLY | O_TRUNC | O_CREAT, 00664);
+    FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
 
     printf("Opened file to write to\n");
 
@@ -197,7 +182,7 @@ int handle_connection(Request *request) {
 }
 
 
-int main() { 
+int prev_main() { 
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();
@@ -207,11 +192,11 @@ int main() {
     // Block and listen for connections - upon receipt, move connection to new socket
     int connection_socket = listen_for_requests(listen_queue_socket);
 
-    Request *request = (Request *)malloc(sizeof(Request));
-    request->socket_fd = connection_socket;
+    Request request;
+    request.socket_fd = connection_socket;
 
     // Let the handler receive request data
     // TODO: Move this to a new thread
-    handle_connection(request);
+    receive_request(&request);
   }
 }

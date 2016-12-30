@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "macros.h"
+#include "server.h"
 
 int fd[2];
 
@@ -22,7 +23,7 @@ pthread_mutex_t judge_lock;
 ** Initializes the judge struct and adds it to active_judges
 ** TODO: Init using the data packet from the request
 */
-int init_judge(Judge *judge) {
+int init_judge(Judge *judge, Request *request) {
   // Set the judge id
   pthread_mutex_lock(&inc_lock);
   sprintf(&judge->id, "%ld", id_incrementor++);
@@ -32,11 +33,14 @@ int init_judge(Judge *judge) {
   sprintf(&judge->fd_w, "%d", fd[1]);
 
   // Capture source file path
-  judge->source_path = (char *)malloc(strlen("prog.c") + 1);
-  strcpy(judge->source_path, "prog.c");
+  judge->source_path = (char *)malloc(strlen(request->filename) + 1);
+  strcpy(judge->source_path, request->filename);
 
   // Capture username
-  strcpy(&judge->user, "pp5nv");
+  strcpy(&judge->user, request->user);
+
+  // Capture assignment number
+  strcpy(&judge->ass_num, request->ass_num);
 
   // Set number of input files
   judge->num_input_files = 2;
@@ -54,7 +58,7 @@ int init_judge(Judge *judge) {
   judge->exec_args[k++] = &judge->id;
   judge->exec_args[k++] = judge->source_path;
   judge->exec_args[k++] = &judge->user;
-  judge->exec_args[k++] = "0";
+  judge->exec_args[k++] = &judge->ass_num;
   judge->exec_args[k++] = judge->fd_w;
   judge->exec_args[k++] = judge->input_files[0];
   judge->exec_args[k++] = judge->input_files[1];
@@ -156,11 +160,9 @@ void listen_to_judges() {
 
       bytes_read += atoi(size);
       message = message + bytes_read;
-      printf("READ [%d bytes]\n", bytes_read);
 
       if (DEBUG)
-        printf("Received[%s][%s][%s] (%d bytes)\n", size, judge_id, ack_code,
-               nbytes);
+        printf("Received %d bytes from judge (%s): %s \n", nbytes, judge_id, ack_code);
 
       // Act on the response
       if (!strcmp(ack_code, &JDG_AOK) || !strcmp(ack_code, &CMP_ERR) ||
@@ -224,10 +226,10 @@ void alarm_handler(int signal) {
 ** Handler for incoming requests
 ** Creates a Judge struct with relevant info and forks off the process.
 */
-void handle_request() {
+void handle_request(Request *request) {
   Judge *judge = (Judge *)malloc(sizeof(Judge));
 
-  if (init_judge(judge)) {
+  if (init_judge(judge, request)) {
     exit(EXIT_FAILURE);
   }
 
@@ -252,6 +254,12 @@ void handle_request() {
 
     alarm(MAX_TIME_ALLOWED);
   }
+}
+
+void init_request(Request *request) {
+  request->user = (char *)malloc(MAX_FILENAME_LEN);
+  request->ass_num = (char *)malloc(MAX_FILENAME_LEN);
+  request->filename = (char *)malloc(MAX_FILENAME_LEN);
 }
 
 /******************************* Main ***********************************/
@@ -283,10 +291,25 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // TODO:Set up the listener to listen for incoming requests
+  // Set up initial socket for listen queue
+  int listen_queue_socket = set_up_server();
 
-  handle_request(/*data*/);
+  // Init and allocate enough space to hold the raw request
+  Request request;
+  init_request(&request);
+  while (1) {
+    
+    // Block and listen for connections - upon receipt, move connection to new socket
+    int connection_socket = listen_for_requests(listen_queue_socket);
 
-  /* Placeholder for listener */ while (1)
-    ;
+    request.socket_fd = connection_socket;
+
+    // TODO: Move this to a new thread to handle concurrent requests
+    // Let the handler receive request data
+    receive_request(&request);
+
+    handle_request(&request);
+  }
+
+
 }

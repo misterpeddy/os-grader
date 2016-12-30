@@ -4,15 +4,12 @@ LIBS=-pthread
 BIN=bin/
 VPATH=src/
 
-all: coordinator judge server
+all: coordinator judge
 
-coordinator: coordinator.c macros.h
+coordinator: coordinator.c macros.h server.h server.c
 	$(CC) $(CFLAGS) $(LIBS) $? -o $(BIN)$@
 
 judge: judge.c macros.h
-	$(CC) $(CFLAGS) $? -o $(BIN)$@
-
-server: server.c macros.h
 	$(CC) $(CFLAGS) $? -o $(BIN)$@
 
 clean:

@@ -29,6 +29,7 @@
 #define SANDBOX "sandbox"
 #define JUDGE "judge"
 #define TEMP "tmp"
+#define SUB "submissions"
 
 /* Receiver macros */
 #define MAX_NUM_THREADS 16
