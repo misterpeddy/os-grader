@@ -1,6 +1,7 @@
 CC=gcc
 CFLAGS=-w
 LIBS=-pthread
+DEBUG=-ggdb
 BIN=bin/
 VPATH=src/
 
@@ -11,6 +12,9 @@ coordinator: coordinator.c macros.h server.h server.c
 
 judge: judge.c macros.h
 	$(CC) $(CFLAGS) $? -o $(BIN)$@
+
+debug: coordinator.c macros.h server.h server.c
+	$(CC) $(CFLAGS) $(DEBUG) $(LIBS) $? -o $(BIN)$@
 
 clean:
 	rm -rf *swp *gch $(BIN)*

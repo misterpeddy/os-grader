@@ -27,5 +27,8 @@ typedef struct {
 int set_up_server();
 int listen_for_requests(int listen_queue_socket);
 int receive_request(Request *request);
+int send_message(int socket_fd, char *message);
+int send_file(int socket_fd, char *filepath);
+int close_connection(int socket_fd);
 
 #endif

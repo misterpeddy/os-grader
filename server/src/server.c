@@ -1,6 +1,7 @@
 #include "server.h"
 
 const char RCV_AOK[] = "RCV_AOK";
+const char JDG_ERR[] = "JDG_ERR";
 
 /*
 ** Parses the header of the request and returns an array of tokens
@@ -174,15 +175,60 @@ int receive_request(Request *request) {
     // Send ack to client
     send(connection_socket, RCV_AOK, strlen(RCV_AOK), 0);
 
-    // Close client connection
-    close(connection_socket);
   } else {
     printf("Client dropped connection\n\n");
   }
 }
 
+/*
+** Assumes socket_fd is a valid connection
+** Sends message on the socket connection
+*/
+int send_message(int socket_fd, char *message) {
+  // send ack to client
+  send(socket_fd, message, strlen(message), 0);
+}
+  
+/*
+** Sends the content of the file over the socket.
+*/
+int send_file(int socket_fd, char *filepath) {
+  FILE *r_file;
+  if ((r_file = fopen(filepath ,"r")) < 1) {
+    printf("No error log file %s\n", filepath);
+    return -1;
+  }
 
-int prev_main() { 
+  // Compute file size
+  struct stat log_stat;
+  stat(filepath, &log_stat);
+  int bytes_remaining = log_stat.st_size;
+  
+  // Send judge error ack
+  send(socket_fd, JDG_ERR, strlen(JDG_ERR), 0);
+
+  // Send file content
+  char buffer[TCP_PACKET_SIZE];
+  int bytes_read;
+  while (bytes_remaining > 0) {
+    bytes_read = fread(buffer, sizeof(buffer[0]), TCP_PACKET_SIZE, r_file); 
+    printf("READ [%s]\n", buffer); fflush(stdout);
+    send(socket_fd, buffer, bytes_read, 0);
+    bytes_remaining -= bytes_read;
+  }
+
+  return 0;
+}
+
+/*
+** Closes a connection
+*/
+int close_connection(int socket_fd) {
+  /* Do any other clean up*/
+  return close(socket_fd);
+}
+
+int example_main() { 
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();

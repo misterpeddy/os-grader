@@ -21,7 +21,6 @@ pthread_mutex_t judge_lock;
 
 /*
 ** Initializes the judge struct and adds it to active_judges
-** TODO: Init using the data packet from the request
 */
 int init_judge(Judge *judge, Request *request) {
   // Set the judge id
@@ -42,6 +41,7 @@ int init_judge(Judge *judge, Request *request) {
   // Capture assignment number
   strcpy(&judge->ass_num, request->ass_num);
 
+  // TODO: get this from the assignments DS
   // Set number of input files
   judge->num_input_files = 2;
 
@@ -69,6 +69,9 @@ int init_judge(Judge *judge, Request *request) {
 
   // Set the time of creation
   gettimeofday(&judge->time_struct, NULL);
+
+  // Set the socket fd
+  judge->socket_fd = request->socket_fd;
 
   // Add the judge to active_judges and return if errored
   if (add_judge(judge)) {
@@ -164,11 +167,31 @@ void listen_to_judges() {
       if (DEBUG)
         printf("Received %d bytes from judge (%s): %s \n", nbytes, judge_id, ack_code);
 
-      // Act on the response
+      // Find out which judge sent the response
+      Judge *judge = get_judge(judge_id);
+
+      // Echo ack to the client
+      send_message(judge->socket_fd, ack_code);
+
+      // If error_code, echo error file to client
+      if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
+        // Compute error file path
+        char log_file[MAX_FILENAME_LEN];
+        sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
+            judge->ass_num, ERRORFILE_SUFFIX);
+
+        // Compute file size
+        struct stat log_stat;
+        stat(log_file, &log_stat);
+
+        // If non-empty, send over file content
+        // TODO: prune the output that is sent over 
+        if (log_stat.st_size) send_file(judge->socket_fd, log_file);
+      }
+        
+      // Act on fatal responses
       if (!strcmp(ack_code, &JDG_AOK) || !strcmp(ack_code, &CMP_ERR) ||
           !strcmp(ack_code, &RUN_ERR) || !strcmp(ack_code, &CHK_ERR)) {
-        // Find out which judge sent the response
-        Judge *judge = get_judge(judge_id);
 
         if (judge) {
           // TODO: Record the result in database
@@ -176,6 +199,7 @@ void listen_to_judges() {
             printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
                    &judge->user);
 
+          close_connection(judge->socket_fd);
           destruct_judge(judge);
           free(judge);
         }
@@ -245,7 +269,7 @@ void handle_request(Request *request) {
     strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
 
     // Run the judge binary
-    if (DEBUG) printf("Starting Judge [%s]\n", judge_bin);
+    if (DEBUG) printf("Starting Judge\n", judge_bin);
     execv(judge_bin, judge->exec_args);
     perror("exec failure");
     exit(EXIT_FAILURE);

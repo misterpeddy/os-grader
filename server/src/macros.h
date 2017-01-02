@@ -40,47 +40,39 @@ const char APP_ROOT[] = "/home/pedram/repos/os-grader/server/";
 const char BIN_ROOT[] = "/home/pedram/repos/os-grader/server/bin/";
 
 //TODO: remove null terminator
-const char CMP_AOK[] = "CMP_AOK\0";
-const char CMP_ERR[] = "CMP_ERR\0";
-const char RUN_AOK[] = "RUN_AOK\0";
-const char RUN_ERR[] = "RUN_ERR\0";
-const char CHK_AOK[] = "CHK_AOK\0";
-const char CHK_ERR[] = "CHK_ERR\0";
-const char JDG_AOK[] = "JDG_AOK\0";
+const char CMP_AOK[] = "CMP_AOK";
+const char CMP_ERR[] = "CMP_ERR";
+const char RUN_AOK[] = "RUN_AOK";
+const char RUN_ERR[] = "RUN_ERR";
+const char CHK_AOK[] = "CHK_AOK";
+const char CHK_ERR[] = "CHK_ERR";
+const char JDG_AOK[] = "JDG_AOK";
 
 typedef struct {
   // Unique identifier for each judge
   char id[64];
-
   // Judge process' pid
   int pid;
-
   // Source code file path
   char *source_path;
-
   // C string containing pipe write-end fd
   char fd_w[FD_MAX];
-
   // Username of submitted file's owner
   char user[MAX_FILENAME_LEN];
-
   // Assignment number
   char ass_num[2 << 5];
-
   // To keep track of time of creation
   struct timeval time_struct;
-
   // Number of input files
   int num_input_files;
-
   // Path to the input files or NULL
   char **input_files;
-
   // Command line argument
   char *exec_args[2 << 5];
-
   // Environment variables
   char *exec_envs[2 << 5];
+  // Client connection socket fd
+  int socket_fd;
 } Judge;
 
 #endif
