@@ -24,6 +24,7 @@ const char CHK_AOK[] = "CHK_AOK";
 const char CHK_ERR[] = "CHK_ERR";
 const char JDG_AOK[] = "JDG_AOK";
 const char JDG_ERR[] = "JDG_ERR";
+const char TIM_OUT[] = "TIM_OUT";
 
 /*
 ** Establishes a TCP connection to server on specified port
@@ -65,37 +66,48 @@ int connect_to_server(char *server, int PORT) {
 /*
 ** If ack is a code, echos its meaning
 ** If ack is error message, echos it
+** Returns 1 on fatal ack, 0 otherwise
 */
 int handle_ack(char *ack) {
     if (!strncmp(ack, RCV_AOK, strlen(RCV_AOK))) {
-      printf(KGRN "Server succesfully received file\n" KYEL);
+        printf(KGRN "Server succesfully received file\n" KYEL);
     } else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
-      printf(KGRN "Succesfully compiled file\n" KYEL);
+        printf(KGRN "Succesfully compiled file\n" KYEL);
     } else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
-      printf(KRED "Could not compile file using gcc\n" KYEL);
-      return 1;
+        printf(KRED "Could not compile file using gcc\n" KYEL);
+        return 1;
     } else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
-      printf(KGRN "Succesfully ran executable against input file\n" KYEL);
+        printf(KGRN "Succesfully ran executable against input file\n" KYEL);
     } else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
-      printf(KRED "There was a runtime error while running against input file\n" KYEL);
-      return 1;
+        printf(KRED "There was a runtime error while running against input file\n" KYEL);
+        return 1;
     } else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
-      printf(KGRN "Succesfully passed a test case\n" KYEL);
+        printf(KGRN "Succesfully passed a test case\n" KYEL);
     } else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
-      printf(KRED "Did not pass a test case\n");
-      return 1;
+        printf(KRED "Did not pass a test case\n" KYEL);
+        return 1;
     } else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
-      printf(KGRN "Your submission was accepted - great job!\n" KYEL);
+        printf(KGRN "Your submission was accepted - great job!\n" KYEL);
     } else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
-      printf(KRED "Following error was retrieved from compiler:\n" KYEL);
-      return 1;
+        printf(KRED "Following error was retrieved from compiler:\n" KYEL);
+        return 1;
+    } else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
+        printf(KRED "Submitted program timed out\n" KYEL);
+        return 1;
     } else {
-      printf("%s", ack);
-      return 1;
+        printf("%s", ack);
+        return 1;
     }
     return 0;
 }
 
+/*
+** Sends the request packet {username, assignment number, source file}
+** to the server over socket_fd. It then waits for the server to send
+** back acknowledgement messages, echoing them as they are received.
+** It halts when server closes the connection.
+** TODO: Break up into 2 loosely coupled routines.
+*/
 int send_request(int socket_fd, char *lfile, char *user, char *ass_num) {
 
   // Open file to send
@@ -152,10 +164,9 @@ int send_request(int socket_fd, char *lfile, char *user, char *ass_num) {
 
   char read_buffer[TCP_PACKET_SIZE];
 
-  // Receive status updates (or error messages) until connection is closed
-  while (recv(socket_fd, read_buffer, ACK_LEN, 0) > 0) {
-    handle_ack(&read_buffer);
-  }
+  // Receive status updates (or error messages) until connection is closed or fatal
+  // ack is received.
+  while ((recv(socket_fd, read_buffer, ACK_LEN, 0) > 0) && !handle_ack(&read_buffer));
 
   printf("Connection closed - Exiting\n");
   fclose(file_to_send);

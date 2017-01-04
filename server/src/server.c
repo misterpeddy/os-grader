@@ -135,7 +135,7 @@ int receive_request(Request *request) {
     
     } else {
       // Print error message and exit
-      printf("Failed to received header - first packet content: [%s]\n",
+      printf("Failed to receive header - first packet content: [%s]\n",
              receive_buffer);
       close(connection_socket);
       return 1;
@@ -204,6 +204,12 @@ int send_file(int socket_fd, char *filepath) {
   stat(filepath, &log_stat);
   int bytes_remaining = log_stat.st_size;
   
+  // If empty file, return
+  if (!bytes_remaining) {
+    fclose(r_file);
+    return;
+  }
+
   // Send judge error ack
   send(socket_fd, JDG_ERR, strlen(JDG_ERR), 0);
 
@@ -217,6 +223,7 @@ int send_file(int socket_fd, char *filepath) {
     bytes_remaining -= bytes_read;
   }
 
+  fclose(r_file);
   return 0;
 }
 

@@ -1,0 +1,12 @@
+*****Redirecting stdout output*****
+$(mkdir pp5nv)
+$(rm -rf pp5nv/0)
+$(mkdir pp5nv/0)
+*****Args: <judge><6><pp5nv_0_07633.c><pp5nv><0><4><input1.txt><input2.txt>*****
+
+*****Compiling assignment 0 [pp5nv_0_07633.c] for pp5nv*****
+$(gcc -w ../tmp/pp5nv_0_07633.c -o pp5nv/0/bin)
+*****Finished compiling assignment 0 [pp5nv_0_07633.c] for pp5nv*****
+
+
+*****Running pp5nv/0/bin*****

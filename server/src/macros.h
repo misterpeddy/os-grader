@@ -47,6 +47,7 @@ const char RUN_ERR[] = "RUN_ERR";
 const char CHK_AOK[] = "CHK_AOK";
 const char CHK_ERR[] = "CHK_ERR";
 const char JDG_AOK[] = "JDG_AOK";
+const char TIM_OUT[] = "TIM_OUT";
 
 typedef struct {
   // Unique identifier for each judge

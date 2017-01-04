@@ -8,6 +8,7 @@
 
 #include "macros.h"
 #include "server.h"
+#include "settings.h"
 
 int fd[2];
 
@@ -146,7 +147,7 @@ void destruct_judge(Judge *judge) {
 */
 void listen_to_judges() {
   while (1) {
-    // Block until receive ack
+    // Block until receive an ack to process
     int nbytes, pipe_in = fd[0], bytes_read = 0;
     char *message = (char *)malloc(MAX_PACKET_SIZE);
     memset(message, 0, MAX_PACKET_SIZE);
@@ -173,25 +174,22 @@ void listen_to_judges() {
       // Echo ack to the client
       send_message(judge->socket_fd, ack_code);
 
-      // If error_code, echo error file to client
-      if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
-        // Compute error file path
-        char log_file[MAX_FILENAME_LEN];
-        sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
-            judge->ass_num, ERRORFILE_SUFFIX);
-
-        // Compute file size
-        struct stat log_stat;
-        stat(log_file, &log_stat);
-
-        // If non-empty, send over file content
-        // TODO: prune the output that is sent over 
-        if (log_stat.st_size) send_file(judge->socket_fd, log_file);
-      }
-        
-      // Act on fatal responses
+      // Act on fatal codes 
       if (!strcmp(ack_code, &JDG_AOK) || !strcmp(ack_code, &CMP_ERR) ||
           !strcmp(ack_code, &RUN_ERR) || !strcmp(ack_code, &CHK_ERR)) {
+
+        // If an error code, echo error file to client
+        if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
+
+          // Compute error file path
+          char log_file[MAX_FILENAME_LEN];
+          sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
+              judge->ass_num, ERRORFILE_SUFFIX);
+
+          // TODO: prune the output that is sent over 
+          send_file(judge->socket_fd, log_file);
+        }
+        
 
         if (judge) {
           // TODO: Record the result in database
@@ -239,8 +237,18 @@ void alarm_handler(int signal) {
           printf("Judge process (%d) for user (%s) timed out - Exiting\n",
                  active_judges[i]->pid, &active_judges[i]->user);
 
-        // Kill the process
-        kill(active_judges[i]->pid, SIGKILL);
+        // Echo ack to the client
+        send_message(active_judges[i]->socket_fd, TIM_OUT);
+
+        // Do clean up for the judge
+        int judge_pid = active_judges[i]->pid;
+        close_connection(active_judges[i]->socket_fd);
+        destruct_judge(active_judges[i]);
+        free(active_judges[i]);
+
+        // Kill the judge process
+        // TODO: wait on it so it doesn't become a zombie
+        kill(judge_pid, SIGKILL);
       }
     }
   }
@@ -292,8 +300,6 @@ void init_request(Request *request) {
 ** Starts listening for new connections, and handles incoming requests.
 */
 int main(int argc, char **argv) {
-  // TODO:Read settings file and initialize assignments DS
-
   // Change current working directory to root of the application
   chdir(APP_ROOT);
 
@@ -307,7 +313,7 @@ int main(int argc, char **argv) {
   // Spawn a thread to listen on judges pipe
   pthread_t pipe_listener_thread;
   pthread_create(&pipe_listener_thread, NULL, (void *)&listen_to_judges, NULL);
-
+  
   // Set up the mutex locks
   if (pthread_mutex_init(&inc_lock, NULL) ||
       pthread_mutex_init(&judge_lock, NULL)) {
