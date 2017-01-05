@@ -36,8 +36,13 @@
 #define MILLI 1000000
 
 /* Settings */
+#define MAX_INPUT_FILES 16
+
 const char APP_ROOT[] = "/home/pedram/repos/os-grader/server/";
 const char BIN_ROOT[] = "/home/pedram/repos/os-grader/server/bin/";
+const char MODULES_ROOT[] = "/home/pedram/repos/os-grader/server/modules/";
+
+
 
 //TODO: remove null terminator
 const char CMP_AOK[] = "CMP_AOK";
@@ -75,5 +80,11 @@ typedef struct {
   // Client connection socket fd
   int socket_fd;
 } Judge;
+
+typedef struct {
+  char name[MAX_FILENAME_LEN];
+  int num_input_files;
+  char **input_files;
+} Assignment;
 
 #endif

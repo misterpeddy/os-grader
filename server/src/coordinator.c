@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -12,7 +13,7 @@
 
 int fd[2];
 
-long id_incrementor = 4;
+long id_incrementor = 0;
 pthread_mutex_t inc_lock;
 
 Judge *active_judges[MAX_JUDGES];
@@ -20,6 +21,20 @@ pthread_mutex_t judge_lock;
 
 /************************ Judge Routines ****************************/
 
+int init_assignments(Assignment **assignments) { 
+  DIR *dir = opendir(MODULES_ROOT);
+  struct dirent *ent;
+  int dir_coutner=0;
+
+  // Go through each assignment in modules directory
+  while ((ent = readdir(dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+      printf("DIR: %s\n", ent->d_name);
+      //assignments[dir_counter] = (Assignment *)malloc(MAX_INPUT_FILES);
+    }
+  }
+  
+}
 /*
 ** Initializes the judge struct and adds it to active_judges
 */
@@ -302,6 +317,10 @@ void init_request(Request *request) {
 int main(int argc, char **argv) {
   // Change current working directory to root of the application
   chdir(APP_ROOT);
+
+  Assignment assignments[NUM_REGISTERED_MODULES];
+  init_assignments(&assignments);
+  exit(0);
 
   // Set up shared pipe
   pipe(fd);
