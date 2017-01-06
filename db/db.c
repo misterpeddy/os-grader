@@ -19,15 +19,27 @@
 #define NULL_STR "NULL"
 
 /*
+** Enumerates different status codes for a submission
+*/
+enum SubmissionStatus {
+	CMP_ERR,	/* Error compiling file 	*/
+	RUN_ERR,  /* Error running file 		*/
+	TIM_OUT,  /* Program timed out			*/
+	JDG_ERR,	/* Did not pass test case */
+	JDG_AOK		/* Accepted submission		*/
+};
+
+/*
 ** To be used as the callback to sqlite3_exec() for SELECT statements.
 ** Assumes the first argument is a string, which the response is written to, with following format:
 ** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** If no rows are returned, it will leave passed_buffer untouched.
 ** Non-zero return value would cause a SQLITE_ABORT return value for the responsible sqlite3_exec() call. 
 */
-int record_retrieval_callback(void *passed_arg, int argc, char **argv, char **column_names){
+static int record_retrieval_callback(void *passed_buffer, int argc, char **argv, char **column_names){
 
 	// Find the first empty spot in the response buffer 
-	char *response_buffer = (char *)passed_arg;
+	char *response_buffer = (char *)passed_buffer;
 	int k=0;
 	while(response_buffer[k++]);
 	response_buffer += k - 1;	
@@ -213,9 +225,9 @@ int main(int argc, char* argv[])
   }
 	
 	// Insert a recrod into the table
-	insert_record(db, "kmv5tf", "1", 0);
-	insert_record(db, "pp5nv", "0", 1);
-	insert_record(db, "pp5nv", "0", 2);
+	insert_record(db, "kmv5tf", "1", TIM_OUT);
+	insert_record(db, "pp5nv", "0", RUN_ERR);
+	insert_record(db, "pp5nv", "0", JDG_AOK);
 
 	// Look up the records for pp5nv
 	char response[MAX_SQL_RESPONSE_LEN];
@@ -223,6 +235,9 @@ int main(int argc, char* argv[])
 	lookup_user(db, "pp5nv", (char *)&response);
 	printf("Response: \n%s", response);
 	
+	memset(response, 0, MAX_SQL_RESPONSE_LEN);
+	lookup_user(db, "kmv5tff", (char *)&response);
+	printf("Response: \n%s", response);
 	close_db(db);
 
 	return 0;
