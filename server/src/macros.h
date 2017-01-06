@@ -15,7 +15,7 @@
 #define TTY "/dev/tty"
 #define MAX_ARGS 8
 #define MAX_ENVS 8
-#define FD_MAX 2 << 5
+#define MAX_FD 32
 #define MAX_TIME_ALLOWED 3
 #define MAX_JUDGES 32
 
@@ -70,7 +70,7 @@ typedef struct {
   char id[64];                  /* Unique identifier for each judge */
   int pid;                      /* Judge process' pid */
   char *source_path;            /* Source code filepath */
-  char fd_w[FD_MAX];            /* C string containing pipe write-end fd */
+  char fd_w[MAX_FD];            /* C string containing pipe write-end fd */
   char user[MAX_FILENAME_LEN];  /* Username of submitted file's owner */
   char ass_num[2 << 5];         /* Assignment number                     */
   struct timeval time_struct;   /* Time of creation of judge             */

@@ -3,19 +3,9 @@
 #include <string.h>
 #include <sqlite3.h> 
 
+#include "db.h"
+
 #define MAX_FILENAME_LEN 128
-
-
-/*
-** Enumerates different status codes for a submission
-*/
-enum SubmissionStatus {
-	CMP_ERR,	/* Error compiling file 	*/
-	RUN_ERR,  /* Error running file 		*/
-	TIM_OUT,  /* Program timed out			*/
-	JDG_ERR,	/* Did not pass test case */
-	JDG_AOK		/* Accepted submission		*/
-};
 
 /*
 ** To be used as the callback to sqlite3_exec() for SELECT statements.
@@ -73,9 +63,12 @@ int create_table(sqlite3 *db) {
 	sprintf(sql_command, 
       "CREATE TABLE %s("							/* DB_TABLE_NAME */ 
       "%s     CHAR(%d)	NOT NULL," 		/* DB_COL_USER */
-      "%s  		CHAR(32)  NOT NULL,"  	/* DB_COL_ASSNUM */
-      "%s   	INT       NOT NULL);" 	/* DB_COL_STATUS */
-      , DB_TABLE_NAME, DB_COL_USER, MAX_FILENAME_LEN, DB_COL_ASSNUM, DB_COL_STATUS);
+      "%s  		CHAR(%d)  NOT NULL,"  	/* DB_COL_ASSNUM */
+      "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT */
+      , DB_TABLE_NAME
+			, DB_COL_USER, MAX_FILENAME_LEN
+			, DB_COL_ASSNUM, MAX_ASSNUM_DIGITS
+			, DB_COL_RESULT, MAX_ACK_LEN);
 
 	// Execute SQL statement
 	int return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
@@ -96,7 +89,7 @@ int create_table(sqlite3 *db) {
 ** in DB_TABLE_NAME with the provided values. All arguments must be
 ** non-NULL. Returns 1 on error and 0 otherwise.
 */
-int insert_record(sqlite3 *db, char *user, char *ass_num, int status) {
+int insert_record(sqlite3 *db, char *user, char *ass_num, char *result) {
 	// Declare error buffer and return code
 	char *error_message;
 	int return_code;
@@ -105,11 +98,12 @@ int insert_record(sqlite3 *db, char *user, char *ass_num, int status) {
 	char sql_command[MAX_SQL_COMMAND_LEN];
 	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
 	sprintf(sql_command, 		
-			"INSERT INTO %s (%s, %s, %s) "
-			"VALUES ('%s', '%s', %d); "
+			"INSERT INTO %s "
+			"(%s, %s, %s) "
+			"VALUES ('%s', '%s', '%s'); "
 			, DB_TABLE_NAME 
-			, DB_COL_USER, DB_COL_ASSNUM, DB_COL_STATUS
-			, user, ass_num, status);
+			, DB_COL_USER, DB_COL_ASSNUM, DB_COL_RESULT
+			, user, ass_num, result);
 
 	// Execute SQL statement
 	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
@@ -119,14 +113,14 @@ int insert_record(sqlite3 *db, char *user, char *ass_num, int status) {
 		return 1;
 	}
 
-	printf("Record inserted successfully\n");
+	printf("Record <%s, %s, %s> inserted successfully\n", user, ass_num, result);
 	return 0;
 }
 
 /*
 ** Assuming a valid db connection, lookup_user looks up all entries for a user
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
 int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
@@ -204,7 +198,7 @@ int main(int argc, char* argv[])
 
   // Open connection to the database
   if (open_db(&db, DB_PATH))
-    exit(EXIT_FAILURE);
+		return 1;
 
   // Create a submissions table 
   if (create_table(db)) {
@@ -213,8 +207,6 @@ int main(int argc, char* argv[])
   }
 	
 	// Insert a recrod into the table
-	insert_record(db, "kmv5tf", "1", TIM_OUT);
-	insert_record(db, "pp5nv", "0", RUN_ERR);
 	insert_record(db, "pp5nv", "0", JDG_AOK);
 
 	// Look up the records for pp5nv
@@ -223,10 +215,9 @@ int main(int argc, char* argv[])
 	lookup_user(db, "pp5nv", (char *)&response);
 	printf("Response: \n%s", response);
 	
-	memset(response, 0, MAX_SQL_RESPONSE_LEN);
-	lookup_user(db, "kmv5tff", (char *)&response);
-	printf("Response: \n%s", response);
-	close_db(db);
+	// Close the db connection and clean up
+	if (close_db(db))
+		return 1;
 
 	return 0;
 }
