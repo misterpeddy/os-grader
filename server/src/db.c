@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sqlite3.h> 
 
 #include "db.h"
 
@@ -40,10 +39,7 @@ static int record_retrieval_callback(void *passed_buffer, int argc, char **argv,
 int open_db(sqlite3 **db, char *db_path) {
 
   // Open connection and heck return code for errors
-	if(sqlite3_open(db_path, db)){
-		printf("Can't open database: %s\n", sqlite3_errmsg(*db));
-    return 1;
-	}
+	if(sqlite3_open(db_path, db)) return 1;
 
   printf("Successfully connected to the database\n");
   return 0;
@@ -75,7 +71,6 @@ int create_table(sqlite3 *db) {
 
   // Check return code
 	if(return_code != SQLITE_OK){
-    printf("SQL error: %s\n", error_message);
     sqlite3_free(error_message);
     return 1;
 	}
@@ -113,7 +108,7 @@ int insert_record(sqlite3 *db, char *user, char *ass_num, char *result) {
 		return 1;
 	}
 
-	printf("Record <%s, %s, %s> inserted successfully\n", user, ass_num, result);
+	if (DEBUG) printf("Result <%s, %s, %s> was recorded successfully\n", user, ass_num, result);
 	return 0;
 }
 
@@ -191,7 +186,7 @@ int close_db(sqlite3 *db) {
   return 0;
 }
  
-int main(int argc, char* argv[])
+int example_db_main(int argc, char* argv[])
 {
 	// Declare handle to the database file
   sqlite3 *db;

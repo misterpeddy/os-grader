@@ -10,8 +10,10 @@
 #include "macros.h"
 #include "server.h"
 #include "settings.h"
+#include "db.h"
 
 int fd[2];
+sqlite3 *db;
 
 long id_incrementor = 0;
 pthread_mutex_t inc_lock;
@@ -161,6 +163,7 @@ void destruct_judge(Judge *judge) {
 ** TODO: Actually record the result
 */
 void listen_to_judges() {
+  // TODO: Clean this up - bring decs out, free message
   while (1) {
     // Block until receive an ack to process
     int nbytes, pipe_in = fd[0], bytes_read = 0;
@@ -180,43 +183,19 @@ void listen_to_judges() {
       bytes_read += atoi(size);
       message = message + bytes_read;
 
-      if (DEBUG)
-        printf("Received %d bytes from judge (%s): %s \n", nbytes, judge_id, ack_code);
+      if (VERBOSE) printf("Received %d bytes from judge (%s): %s \n", nbytes, judge_id, ack_code);
 
       // Find out which judge sent the response
       Judge *judge = get_judge(judge_id);
 
-      // Echo ack to the client
-      send_message(judge->socket_fd, ack_code);
-
-      // Act on fatal codes 
-      if (!strcmp(ack_code, &JDG_AOK) || !strcmp(ack_code, &CMP_ERR) ||
-          !strcmp(ack_code, &RUN_ERR) || !strcmp(ack_code, &CHK_ERR)) {
-
-        // If an error code, echo error file to client
-        if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
-
-          // Compute error file path
-          char log_file[MAX_FILENAME_LEN];
-          sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
-              judge->ass_num, ERRORFILE_SUFFIX);
-
-          // TODO: prune the output that is sent over 
-          send_file(judge->socket_fd, log_file);
-        }
-        
-
-        if (judge) {
-          // TODO: Record the result in database
-          if (DEBUG)
-            printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
-                   &judge->user);
-
-          close_connection(judge->socket_fd);
-          destruct_judge(judge);
-          free(judge);
-        }
+      if (!judge) {
+        // Should never happen. TODO: Log this 
+        // Break out of the inner loop
+        printf("DANGER: judge %d has been deallocated\n");
+        continue;
       }
+
+      act_on_ack(judge, ack_code);
     }
   }
   // TODO: free(message) in final destructor
@@ -239,10 +218,13 @@ void alarm_handler(int signal) {
   int lifetime;
   gettimeofday(&end, NULL);
 
+  Judge *judge;
+
   // Find processes that have max'd out their time limitation
   for (int i = 0; i < MAX_JUDGES; i++) {
     if (active_judges[i]) {
-      start = active_judges[i]->time_struct;
+      judge = active_judges[i];
+      start = judge->time_struct;
       lifetime = (end.tv_sec * MILLI + end.tv_usec) -
                  (start.tv_sec * MILLI + start.tv_usec);
 
@@ -250,20 +232,23 @@ void alarm_handler(int signal) {
       if (lifetime > MAX_TIME_ALLOWED * MILLI) {
         if (DEBUG)
           printf("Judge process (%d) for user (%s) timed out - Exiting\n",
-                 active_judges[i]->pid, &active_judges[i]->user);
+                 judge->pid, &judge->user);
 
         // Echo ack to the client
-        send_message(active_judges[i]->socket_fd, TIM_OUT);
+        send_message(judge->socket_fd, TIM_OUT);
+
+        // Record result in the database
+        insert_record(db, judge->user, judge->ass_num, TIM_OUT);
 
         // Do clean up for the judge
-        int judge_pid = active_judges[i]->pid;
-        close_connection(active_judges[i]->socket_fd);
-        destruct_judge(active_judges[i]);
-        free(active_judges[i]);
+        int judge_pid = judge->pid;
+        close_connection(judge->socket_fd);
+        destruct_judge(judge);
+        free(judge);
 
         // Kill the judge process
-        // TODO: wait on it so it doesn't become a zombie
         kill(judge_pid, SIGKILL);
+        wait(judge_pid);
       }
     }
   }
@@ -292,7 +277,7 @@ void handle_request(Request *request) {
     strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
 
     // Run the judge binary
-    if (DEBUG) printf("Starting Judge\n", judge_bin);
+    if (DEBUG) printf("\nStarting Judge\n", judge_bin);
     execv(judge_bin, judge->exec_args);
     perror("exec failure");
     exit(EXIT_FAILURE);
@@ -303,12 +288,58 @@ void handle_request(Request *request) {
   }
 }
 
+/* 
+** If supplied a non-fatal ack_code, echos to client and returns.
+** For fatal ack_codes, records result in database and destructs the judge. 
+** If an error file exists {CMP_ERR, RUN_ERR} echos its content to client. 
+*/
+void act_on_ack(Judge *judge, char *ack_code) {
+  
+  // Echo ack to the client
+  send_message(judge->socket_fd, ack_code);
+
+  // Don't do anything for non-fatal acks
+  if (strcmp(ack_code, &JDG_AOK) && strcmp(ack_code, &CMP_ERR) &&
+      strcmp(ack_code, &RUN_ERR) && strcmp(ack_code, &CHK_ERR)) 
+    return;
+
+  // If an error code, echo error file to client
+  if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
+
+    // Compute error file path
+    char log_file[MAX_FILENAME_LEN];
+    sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
+        judge->ass_num, ERRORFILE_SUFFIX);
+
+    // Send judge error ack
+    send(judge->socket_fd, JDG_ERR, strlen(JDG_ERR), 0); 
+
+    // TODO: prune the output that is sent over 
+    send_file(judge->socket_fd, log_file);
+  }
+
+  // Record the result in database
+  insert_record(db, judge->user, judge->ass_num, ack_code);
+
+  if (DEBUG)
+    printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
+           &judge->user);
+
+  close_connection(judge->socket_fd);
+  destruct_judge(judge);
+  free(judge);
+}
+
 void init_request(Request *request) {
   request->user = (char *)malloc(MAX_FILENAME_LEN);
   request->ass_num = (char *)malloc(MAX_FILENAME_LEN);
   request->filename = (char *)malloc(MAX_FILENAME_LEN);
 }
 
+void fatal_error(char *message) {
+  printf("Fatal: %s\n", message);
+  exit(EXIT_FAILURE);
+}
 /******************************* Main ***********************************/
 
 /*
@@ -327,7 +358,15 @@ int main(int argc, char **argv) {
 
   // Set up alarm listener
   if (signal(SIGALRM, alarm_handler) == SIG_ERR && DEBUG)
-    printf("Could not register alarm listener\n");
+    fatal_error("Could not register alarm listener");
+
+  // Open connection to the database
+  if (open_db(&db, DB_PATH))
+    //fatal_error("Can't open database: %s\n", sqlite3_errmsg(*db));
+    fatal_error("Can't open database");
+
+  // Create a submissions table if it does not already exist
+  create_table(db);
 
   // Spawn a thread to listen on judges pipe
   pthread_t pipe_listener_thread;
@@ -335,10 +374,8 @@ int main(int argc, char **argv) {
   
   // Set up the mutex locks
   if (pthread_mutex_init(&inc_lock, NULL) ||
-      pthread_mutex_init(&judge_lock, NULL)) {
-    if (DEBUG) printf("Could not initiazlie mutex locks - Exiting\n");
-    exit(EXIT_FAILURE);
-  }
+      pthread_mutex_init(&judge_lock, NULL)) 
+    fatal_error("Could not initiazlie mutex lock");
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();
@@ -346,19 +383,26 @@ int main(int argc, char **argv) {
   // Init and allocate enough space to hold the raw request
   Request request;
   init_request(&request);
+
+  int connection_socket;
+  if (DEBUG) printf("Listening for connections on port %d...\n", PORT);
+
+  // Until receive SIGKILL or SIGINT, continue listening
+  // TODO: Better termination mechanism
   while (1) {
     
     // Block and listen for connections - upon receipt, move connection to new socket
-    int connection_socket = listen_for_requests(listen_queue_socket);
+    connection_socket = listen_for_requests(listen_queue_socket);
 
     request.socket_fd = connection_socket;
 
-    // TODO: Move this to a new thread to handle concurrent requests
     // Let the handler receive request data
+    // TODO: Move this to a new thread to handle concurrent requests
     receive_request(&request);
 
     handle_request(&request);
   }
+  
 
-
+  // TODO: Cleanup {disconnect from db, free listen_queue_socket}
 }

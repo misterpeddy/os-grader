@@ -1,30 +1,4 @@
-#include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define ARG_DELIM ":"
-#define HEADER_PREFIX "FBEGIN"
-#define TCP_PACKET_SIZE 4096
-
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-
-#define ACK_LEN 7 
-
-const char RCV_AOK[] = "RCV_AOK";
-const char CMP_AOK[] = "CMP_AOK";
-const char CMP_ERR[] = "CMP_ERR";
-const char RUN_AOK[] = "RUN_AOK";
-const char RUN_ERR[] = "RUN_ERR";
-const char CHK_AOK[] = "CHK_AOK";
-const char CHK_ERR[] = "CHK_ERR";
-const char JDG_AOK[] = "JDG_AOK";
-const char JDG_ERR[] = "JDG_ERR";
-const char TIM_OUT[] = "TIM_OUT";
+#include "client.h"
 
 /*
 ** Establishes a TCP connection to server on specified port
@@ -41,7 +15,7 @@ int connect_to_server(char *server, int PORT) {
   // Create socket to connect to the server
   int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
-    printf("Cannot create socket_fd\n");
+    printf("Failed obtaining a socket file descriptor\n");
     return -1;
   }
 
@@ -55,7 +29,7 @@ int connect_to_server(char *server, int PORT) {
   // Try to connect to the server
   if (connect(socket_fd, (struct sockaddr *)&server_address,
               sizeof(server_address)) < 0) {
-    printf("Cannot connect\n");
+    printf("Cannot connect to server\n");
     return -1;
   }
   printf("Succesfully connected to the server\n");
@@ -64,9 +38,9 @@ int connect_to_server(char *server, int PORT) {
 }
 
 /*
-** If ack is a code, echos its meaning
-** If ack is error message, echos it
-** Returns 1 on fatal ack, 0 otherwise
+** If ack is an ack_code, echos its meaning, otherwise echos 
+** the content of the message.
+** Returns 1 if no more messages will be received
 */
 int handle_ack(char *ack) {
     if (!strncmp(ack, RCV_AOK, strlen(RCV_AOK))) {
@@ -75,12 +49,10 @@ int handle_ack(char *ack) {
         printf(KGRN "Succesfully compiled file\n" KYEL);
     } else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
         printf(KRED "Could not compile file using gcc\n" KYEL);
-        return 1;
     } else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
         printf(KGRN "Succesfully ran executable against input file\n" KYEL);
     } else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
         printf(KRED "There was a runtime error while running against input file\n" KYEL);
-        return 1;
     } else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
         printf(KGRN "Succesfully passed a test case\n" KYEL);
     } else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
@@ -88,16 +60,18 @@ int handle_ack(char *ack) {
         return 1;
     } else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
         printf(KGRN "Your submission was accepted - great job!\n" KYEL);
-    } else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
-        printf(KRED "Following error was retrieved from compiler:\n" KYEL);
         return 1;
+    } else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
+        printf(KRED "Your submission was not accepted.\n" KYEL);
     } else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
         printf(KRED "Submitted program timed out\n" KYEL);
         return 1;
+    } else if (!strncmp(ack, BEG_FIL, strlen(BEG_FIL))) {
+        printf(KYEL "Following message was received from server:\n" KYEL);
     } else {
-        printf("%s", ack);
-        return 1;
+        printf("%s%s%s", KNRM, ack, KYEL);
     }
+
     return 0;
 }
 
@@ -164,9 +138,12 @@ int send_request(int socket_fd, char *lfile, char *user, char *ass_num) {
 
   char read_buffer[TCP_PACKET_SIZE];
 
-  // Receive status updates (or error messages) until connection is closed or fatal
-  // ack is received.
-  while ((recv(socket_fd, read_buffer, ACK_LEN, 0) > 0) && !handle_ack(&read_buffer));
+  // Receive status updates (or error messages) until connection is closed or handle_ack
+  // signals a force exit.
+  while ((recv(socket_fd, read_buffer, ACK_LEN, 0) > 0)) {
+    if (handle_ack(&read_buffer)) break;
+    memset(read_buffer, 0, TCP_PACKET_SIZE);
+  }
 
   printf("Connection closed - Exiting\n");
   fclose(file_to_send);

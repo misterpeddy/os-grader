@@ -19,8 +19,6 @@ char diff_file[MAX_FILENAME_LEN];
 ** reroutes the stdout and stderr of the process to log_file and err_file
 */
 void init_sandbox(char *user, char *ass_num) {
-  if (DEBUG) printf("%sJudge Started%s\n", FILLER, FILLER);
-
   // Change current working directory to the submissions folder
   chdir(SUB);
 
@@ -165,8 +163,6 @@ void clean_and_exit(int code) {
   fflush(stderr);
   freopen(TTY, "a", stderr);
   freopen(TTY, "a", stdout);
-
-  if (DEBUG) printf("%sJudge Finished%s\n", FILLER, FILLER);
 
   // Exit with the supplied exit code
   exit(code);

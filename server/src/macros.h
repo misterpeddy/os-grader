@@ -5,6 +5,7 @@
 
 /* Shared macros */
 #define DEBUG 1
+#define VERBOSE 0
 #define DELIM "*"
 #define MAX_FILENAME_LEN 128
 #define MAX_COMMAND_LEN 512
@@ -60,10 +61,11 @@
 #define CHK_AOK   "CHK_AOK" /* A diff succeeded             */
 #define CHK_ERR   "CHK_ERR" /* A diff failed          FATAL */
 
-#define JDG_ERR   "JDG_ERR" /* Solution not accepted        */
-#define JDG_AOK   "JDG_AOK" /* Solution accepted            */
+#define JDG_ERR   "JDG_ERR" /* Solution not accepted  FATAL */
+#define JDG_AOK   "JDG_AOK" /* Solution accepted      FATAL */
 
 #define RCV_AOK   "RCV_AOK" /* Client request received      */
+#define BEG_FIL   "BEG_FIL" /* About to stream file         */
 
 
 typedef struct {

@@ -63,7 +63,6 @@ int set_up_server() {
     close(listen_queue_socket);
     return 1;
   }
-  printf("Created socket\n");
 
   struct sockaddr_in server_address;
   server_address.sin_family = AF_INET;
@@ -77,7 +76,7 @@ int set_up_server() {
     close(listen_queue_socket);
     return 1;
   }
-  printf("Bound socket\n\n");
+  if (DEBUG) printf("Created and bound socket\n\n");
   return listen_queue_socket;
 }
 
@@ -91,7 +90,6 @@ int listen_for_requests(int listen_queue_socket) {
   struct sockaddr_in client_address; 
   
   // Listen for new connections
-  printf("Listening for connections on port %d...\n", PORT);
   if (listen(listen_queue_socket, MAX_WAITING_CONNECTIONS) < 0) {
     printf("Could not listen on port %d - Exiting\n", PORT);
     exit(EXIT_FAILURE);
@@ -119,8 +117,6 @@ int receive_request(Request *request) {
     return 1;
   }
 
-  printf("Valid connection has been established - retrieving header\n");
-
   // Receive the header_tokens and write the file
   char receive_buffer[TCP_PACKET_SIZE];
   if (recv(connection_socket, receive_buffer, sizeof(receive_buffer), 0)) {
@@ -147,7 +143,7 @@ int receive_request(Request *request) {
       return 1;
     }
 
-    printf("Retreived and parsed header information\n");
+    if (VERBOSE) printf("Retreived and parsed header information\n");
 
     // Compute path of file to write
     char filepath[MAX_FILENAME_LEN];
@@ -158,7 +154,7 @@ int receive_request(Request *request) {
     // Open file to write to and
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
 
-    printf("Opened file to write to\n");
+    if (VERBOSE) printf("Opened file to write to\n");
 
     // Listen until file is received or no more packets are being sent
     while ((bytes_remaining > 0) && 
@@ -172,7 +168,7 @@ int receive_request(Request *request) {
 
     // Make sure we received the number of bytes we expected
     if (!bytes_remaining) {
-      printf("Succesfully retrieved file\n\n");
+      if (VERBOSE) printf("Succesfully retrieved file\n\n");
     } else {
       printf("Warning - Expected %d bytes, received %d bytes\n\n");
     }
@@ -217,15 +213,14 @@ int send_file(int socket_fd, char *filepath) {
     return;
   }
 
-  // Send judge error ack
-  send(socket_fd, JDG_ERR, strlen(JDG_ERR), 0);
+  // Send ack that a file is being streamed over
+  send(socket_fd, BEG_FIL, strlen(BEG_FIL), 0);
 
   // Send file content
   char buffer[TCP_PACKET_SIZE];
   int bytes_read;
   while (bytes_remaining > 0) {
     bytes_read = fread(buffer, sizeof(buffer[0]), TCP_PACKET_SIZE, r_file); 
-    printf("READ [%s]\n", buffer); fflush(stdout);
     send(socket_fd, buffer, bytes_read, 0);
     bytes_remaining -= bytes_read;
   }
@@ -242,7 +237,7 @@ int close_connection(int socket_fd) {
   return close(socket_fd);
 }
 
-int example_main() { 
+int example_server_main() { 
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();
