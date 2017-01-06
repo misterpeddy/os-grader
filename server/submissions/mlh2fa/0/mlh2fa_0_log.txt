@@ -1,0 +1,32 @@
+*****Redirecting stdout output*****
+$(mkdir mlh2fa)
+$(rm -rf mlh2fa/0)
+$(mkdir mlh2fa/0)
+*****Args: <judge><0><mlh2fa_0_05945.c><mlh2fa><0><4><input1.txt><input2.txt>*****
+
+*****Compiling assignment 0 [mlh2fa_0_05945.c] for mlh2fa*****
+$(gcc -w ../tmp/mlh2fa_0_05945.c -o mlh2fa/0/bin)
+*****Finished compiling assignment 0 [mlh2fa_0_05945.c] for mlh2fa*****
+
+
+*****Running mlh2fa/0/bin*****
+$(./mlh2fa/0/bin < ../modules/0/input1.txt)
+*****Finished running mlh2fa/0/bin*****
+
+
+*****Judging assignment 0 with input input1.txt for mlh2fa*****
+$(diff mlh2fa/0/mlh2fa_0_out_input1.txt ../modules/0/out_input1.txt > mlh2fa/0/mlh2fa_0_diff.txt)
+*****Finished judging assignment 0 with input input1.txt for mlh2fa*****
+
+
+*****Running mlh2fa/0/bin*****
+$(./mlh2fa/0/bin < ../modules/0/input2.txt)
+*****Finished running mlh2fa/0/bin*****
+
+
+*****Judging assignment 0 with input input2.txt for mlh2fa*****
+$(diff mlh2fa/0/mlh2fa_0_out_input2.txt ../modules/0/out_input2.txt > mlh2fa/0/mlh2fa_0_diff.txt)
+*****Finished judging assignment 0 with input input2.txt for mlh2fa*****
+
+*****Finishing stdout redirect*****
+

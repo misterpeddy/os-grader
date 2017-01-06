@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "db.h"
+#include "macros.h"
 
 #define MAX_FILENAME_LEN 128
 
