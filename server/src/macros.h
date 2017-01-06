@@ -20,6 +20,7 @@
 #define MAX_JUDGES 32
 
 /* Coordinator macros */
+#define MAX_INPUT_FILES 16
 #define MAX_NUM_THREADS 16
 #define MILLI 1000000
 
@@ -45,26 +46,24 @@
 #define SUB "submissions"
 
 /* Settings */
-#define MAX_INPUT_FILES 16
-
-const char APP_ROOT[] = "/home/pedram/repos/os-grader/server/";
-const char BIN_ROOT[] = "/home/pedram/repos/os-grader/server/bin/";
-const char MODULES_ROOT[] = "/home/pedram/repos/os-grader/server/modules/";
+#define APP_ROOT "/home/pedram/repos/os-grader/server/"
+#define BIN_ROOT "/home/pedram/repos/os-grader/server/bin/"
+#define MODULES_ROOT "/home/pedram/repos/os-grader/server/modules/"
 
 
 /* Acknowledgment messages */
-const char CMP_AOK[] = "CMP_AOK"; /* Compilation succeeded          */
-const char CMP_ERR[] = "CMP_ERR"; /* Compilation failed       FATAL */
-const char RUN_AOK[] = "RUN_AOK"; /* A run succeeded                */
-const char RUN_ERR[] = "RUN_ERR"; /* A run failed             FATAL */
-const char TIM_OUT[] = "TIM_OUT"; /* A run timed out          FATAL */
-const char CHK_AOK[] = "CHK_AOK"; /* A diff succeeded               */
-const char CHK_ERR[] = "CHK_ERR"; /* A diff failed            FATAL */
+#define CMP_AOK   "CMP_AOK" /* Compilation succeeded        */
+#define CMP_ERR   "CMP_ERR" /* Compilation failed     FATAL */
+#define RUN_AOK   "RUN_AOK" /* A run succeeded              */
+#define RUN_ERR   "RUN_ERR" /* A run failed           FATAL */
+#define TIM_OUT   "TIM_OUT" /* A run timed out        FATAL */
+#define CHK_AOK   "CHK_AOK" /* A diff succeeded             */
+#define CHK_ERR   "CHK_ERR" /* A diff failed          FATAL */
 
-const char JDG_ERR[] = "JDG_ERR"; /* Solution not accepted          */
-const char JDG_AOK[] = "JDG_AOK"; /* Solution accepted              */
+#define JDG_ERR   "JDG_ERR" /* Solution not accepted        */
+#define JDG_AOK   "JDG_AOK" /* Solution accepted            */
 
-const char RCV_AOK[] = "RCV_AOK"; /* Client request received        */
+#define RCV_AOK   "RCV_AOK" /* Client request received      */
 
 
 typedef struct {

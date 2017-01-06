@@ -318,9 +318,9 @@ int main(int argc, char **argv) {
   // Change current working directory to root of the application
   chdir(APP_ROOT);
 
-  Assignment assignments[NUM_REGISTERED_MODULES];
-  init_assignments(&assignments);
-  exit(0);
+  //Assignment assignments[NUM_REGISTERED_MODULES];
+  //init_assignments(&assignments);
+  //exit(0);
 
   // Set up shared pipe
   pipe(fd);

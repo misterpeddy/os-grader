@@ -242,7 +242,7 @@ int close_connection(int socket_fd) {
   return close(socket_fd);
 }
 
-int main() { 
+int example_main() { 
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();
