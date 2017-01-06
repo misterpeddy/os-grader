@@ -1,7 +1,13 @@
-#include "server.h"
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
 
-const char RCV_AOK[] = "RCV_AOK";
-const char JDG_ERR[] = "JDG_ERR";
+#include "server.h"
+#include "macros.h"
 
 /*
 ** Parses the header of the request and returns an array of tokens
@@ -146,7 +152,8 @@ int receive_request(Request *request) {
     // Compute path of file to write
     char filepath[MAX_FILENAME_LEN];
     strcpy(&filepath, TEMP);
-    strcpy(&filepath[strlen(TEMP)], request->filename);
+    strcpy(&filepath[strlen(TEMP)], "/");
+    strcpy(&filepath[strlen(TEMP) + 1], request->filename);
 
     // Open file to write to and
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
@@ -228,14 +235,14 @@ int send_file(int socket_fd, char *filepath) {
 }
 
 /*
-** Closes a connection
+** Closes the socket connection and does any necassary clean-up.
 */
 int close_connection(int socket_fd) {
   /* Do any other clean up*/
   return close(socket_fd);
 }
 
-int example_main() { 
+int main() { 
 
   // Set up initial socket for listen queue
   int listen_queue_socket = set_up_server();
