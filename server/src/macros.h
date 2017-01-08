@@ -36,7 +36,7 @@
 #define LOGFILE_SUFFIX "log.txt"
 #define ERRORFILE_SUFFIX "error.txt"
 #define DIFF_SUFFIX "diff.txt"
-#define OUTFILE_SUFFIX "out"
+#define OUTFILE_PREFIX "out"
 
 /* Internal directories */
 #define BIN "bin"

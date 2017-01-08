@@ -23,24 +23,97 @@ pthread_mutex_t judge_lock;
 
 /************************ Judge Routines ****************************/
 
+char is_output_file (char *filename) {
+  int k=0;
+  return (filename[k++] == OUTFILE_PREFIX[0]) 
+    && (filename[k++] == 'u')
+    && (filename[k++] == 't') 
+    && (filename[k++] == '_');
+}
+
+void init_assignment(Assignment *assignment, struct dirent *ass_dir) {
+  char assignment_path[MAX_FILENAME_LEN];
+  sprintf(assignment_path, "%s%s", MODULES_ROOT, ass_dir->d_name);
+  DIR *assignment_dir = opendir(assignment_path);
+  
+  // Set assignment name
+  strcpy(&assignment->number, ass_dir->d_name);
+
+  // Count number of input files
+  int num_files=0;
+  struct dirent *ent;
+  while ((ent = readdir(assignment_dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") 
+        && strcmp(ent->d_name, "..")
+        && !is_output_file(ent->d_name)) {
+          num_files++; 
+          printf("%s\n",ent->d_name);
+    }
+  }
+  
+  assignment->num_input_files = num_files;
+  if (!num_files) return;
+  
+  // Allocate space for the input file paths
+  assignment->input_files = (char **) malloc(num_files * sizeof(char *));
+  
+  // Reset the directory cursor
+  closedir(assignment_dir);
+  assignment_dir = opendir(assignment_path);
+
+  // Set path for each input file in assignment struct
+  int file_counter=0;
+  while ((ent = readdir(assignment_dir)) != NULL) {
+    if (strcmp(ent->d_name, ".") 
+        && strcmp(ent->d_name, "..")
+        && !is_output_file(ent->d_name)) {
+          assignment->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
+          strcpy(assignment->input_files[file_counter], ent->d_name);
+          file_counter++; 
+    }
+  }
+}
+
 int init_assignments(Assignment **assignments) { 
   DIR *dir = opendir(MODULES_ROOT);
   struct dirent *ent;
-  int dir_coutner=0;
+  int dir_counter=0;
 
   // Go through each assignment in modules directory
   while ((ent = readdir(dir)) != NULL) {
     if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
-      printf("DIR: %s\n", ent->d_name);
-      //assignments[dir_counter] = (Assignment *)malloc(MAX_INPUT_FILES);
+      assignments[dir_counter] = (Assignment *)malloc(sizeof(Assignment));
+      init_assignment(assignments[dir_counter], ent);
+      dir_counter++;
     }
   }
-  
 }
+
+destroy_assignment(Assignment *assignment) {
+  int i=0;
+  for (; i<assignment->num_input_files; i++) {   
+  }
+}
+
+destroy_assignments(Assignment **assignments) {
+  int i=0, j=0;
+  for (; i<NUM_REGISTERED_MODULES; i++) {
+    destroy_assignment(assignments[i]);
+    free(assignments[i]);
+  }
+}
+
+Assignment *find_assignment(Assignment **assignments, char *ass_num) { 
+  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+    if (!strcmp(assignments[i]->number, ass_num)) return assignments[i];
+  }
+  return NULL;
+}
+
 /*
 ** Initializes the judge struct and adds it to active_judges
 */
-int init_judge(Judge *judge, Request *request) {
+int init_judge(Judge *judge, Request *request, Assignment **assignments) {
   // Set the judge id
   pthread_mutex_lock(&inc_lock);
   sprintf(&judge->id, "%ld", id_incrementor++);
@@ -59,16 +132,18 @@ int init_judge(Judge *judge, Request *request) {
   // Capture assignment number
   strcpy(&judge->ass_num, request->ass_num);
 
-  // TODO: get this from the assignments DS
-  // Set number of input files
-  judge->num_input_files = 2;
+  // Find the right assignment
+  Assignment *assignment = find_assignment(assignments, &judge->ass_num);
 
-  // Capture input file path
-  judge->input_files = (char **)malloc(2);
-  judge->input_files[0] = (char *)malloc(strlen("input1.txt") + 1);
-  strcpy(judge->input_files[0], "input1.txt");
-  judge->input_files[1] = (char *)malloc(strlen("input2.txt") + 1);
-  strcpy(judge->input_files[1], "input2.txt");
+  // Set number of input files
+  judge->num_input_files = assignment->num_input_files;
+
+  // Capture input files path
+  judge->input_files = (char **)malloc(judge->num_input_files);
+  for (int i=0; i< judge->num_input_files; i++) {
+    judge->input_files[i] = (char *)malloc(strlen(assignment->input_files[i]));
+    strcpy(judge->input_files[i], assignment->input_files[i]);
+  }
 
   // Set command line arguments
   int k = 0;
@@ -152,6 +227,8 @@ void destruct_judge(Judge *judge) {
     if (active_judges[i] && !strcmp(active_judges[i]->id, judge->id))
       active_judges[i] = NULL;
   }
+
+  free(judge);
 }
 
 /************************* I/O Routines*****************************/
@@ -166,12 +243,12 @@ void listen_to_judges() {
   // TODO: Clean this up - bring decs out, free message
   while (1) {
     // Block until receive an ack to process
-    int nbytes, pipe_in = fd[0], bytes_read = 0;
+    int bytes_received, pipe_in = fd[0], bytes_read = 0;
     char *message = (char *)malloc(MAX_PACKET_SIZE);
     memset(message, 0, MAX_PACKET_SIZE);
-    nbytes = read(pipe_in, message, MAX_PACKET_SIZE);
+    bytes_received = read(pipe_in, message, MAX_PACKET_SIZE);
 
-    while (nbytes > bytes_read) {
+    while (bytes_received > bytes_read) {
       // Set up to parse message
       char *size, *judge_id, *ack_code, *token_state;
 
@@ -183,7 +260,7 @@ void listen_to_judges() {
       bytes_read += atoi(size);
       message = message + bytes_read;
 
-      if (VERBOSE) printf("Received %d bytes from judge (%s): %s \n", nbytes, judge_id, ack_code);
+      if (VERBOSE) printf("Received %d bytes from judge (%s): %s \n", bytes_received, judge_id, ack_code);
 
       // Find out which judge sent the response
       Judge *judge = get_judge(judge_id);
@@ -244,7 +321,6 @@ void alarm_handler(int signal) {
         int judge_pid = judge->pid;
         close_connection(judge->socket_fd);
         destruct_judge(judge);
-        free(judge);
 
         // Kill the judge process
         kill(judge_pid, SIGKILL);
@@ -258,10 +334,10 @@ void alarm_handler(int signal) {
 ** Handler for incoming requests
 ** Creates a Judge struct with relevant info and forks off the process.
 */
-void handle_request(Request *request) {
+void handle_request(Request *request, Assignment **assignments) {
   Judge *judge = (Judge *)malloc(sizeof(Judge));
 
-  if (init_judge(judge, request)) {
+  if (init_judge(judge, request, assignments)) {
     exit(EXIT_FAILURE);
   }
 
@@ -325,9 +401,10 @@ void act_on_ack(Judge *judge, char *ack_code) {
     printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
            &judge->user);
 
+  // Close socket connection, wait on judge process, and destruct judge
   close_connection(judge->socket_fd);
+  wait(judge->pid);
   destruct_judge(judge);
-  free(judge);
 }
 
 void init_request(Request *request) {
@@ -349,9 +426,9 @@ int main(int argc, char **argv) {
   // Change current working directory to root of the application
   chdir(APP_ROOT);
 
-  //Assignment assignments[NUM_REGISTERED_MODULES];
-  //init_assignments(&assignments);
-  //exit(0);
+  // Initialize assignments
+  Assignment assignments[NUM_REGISTERED_MODULES];
+  init_assignments(&assignments);
 
   // Set up shared pipe
   pipe(fd);
@@ -400,7 +477,7 @@ int main(int argc, char **argv) {
     // TODO: Move this to a new thread to handle concurrent requests
     receive_request(&request);
 
-    handle_request(&request);
+    handle_request(&request, &assignments);
   }
   
 

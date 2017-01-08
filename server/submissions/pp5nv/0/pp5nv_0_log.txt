@@ -2,31 +2,11 @@
 $(mkdir pp5nv)
 $(rm -rf pp5nv/0)
 $(mkdir pp5nv/0)
-*****Args: <judge><1><pp5nv_0_06007.c><pp5nv><0><4><input1.txt><input2.txt>*****
+*****Args: <judge><0><pp5nv_0_08008.c><pp5nv><0><7><input2.txt><input1.txt>*****
 
-*****Compiling assignment 0 [pp5nv_0_06007.c] for pp5nv*****
-$(gcc -w ../tmp/pp5nv_0_06007.c -o pp5nv/0/bin)
-*****Finished compiling assignment 0 [pp5nv_0_06007.c] for pp5nv*****
-
-
-*****Running pp5nv/0/bin*****
-$(./pp5nv/0/bin < ../modules/0/input1.txt)
-*****Finished running pp5nv/0/bin*****
-
-
-*****Judging assignment 0 with input input1.txt for pp5nv*****
-$(diff pp5nv/0/pp5nv_0_out_input1.txt ../modules/0/out_input1.txt > pp5nv/0/pp5nv_0_diff.txt)
-*****Finished judging assignment 0 with input input1.txt for pp5nv*****
+*****Compiling assignment 0 [pp5nv_0_08008.c] for pp5nv*****
+$(gcc -w ../tmp/pp5nv_0_08008.c -o pp5nv/0/bin)
+*****Finished compiling assignment 0 [pp5nv_0_08008.c] for pp5nv*****
 
 
 *****Running pp5nv/0/bin*****
-$(./pp5nv/0/bin < ../modules/0/input2.txt)
-*****Finished running pp5nv/0/bin*****
-
-
-*****Judging assignment 0 with input input2.txt for pp5nv*****
-$(diff pp5nv/0/pp5nv_0_out_input2.txt ../modules/0/out_input2.txt > pp5nv/0/pp5nv_0_diff.txt)
-*****Finished judging assignment 0 with input input2.txt for pp5nv*****
-
-*****Finishing stdout redirect*****
-

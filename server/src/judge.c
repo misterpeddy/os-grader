@@ -91,7 +91,7 @@ int run_program(char *user, char *ass_num, char *input_file) {
 
   // Redirect output to OUT
   sprintf(&out_file, "%s/%s/%s_%s_%s_%s", user, ass_num, user, ass_num,
-          OUTFILE_SUFFIX, input_file);
+          OUTFILE_PREFIX, input_file);
   freopen(out_file, "w", stdout);
 
   // Run the binary
@@ -135,7 +135,7 @@ int judge(char *user, char *ass_num, char *input_file) {
 
   // Set up master file path
   char master_file[MAX_FILENAME_LEN];
-  sprintf(&master_file, "../%s/%s/%s_%s", MODULES, ass_num, OUTFILE_SUFFIX,
+  sprintf(&master_file, "../%s/%s/%s_%s", MODULES, ass_num, OUTFILE_PREFIX,
           input_file);
 
   // Execute the diff and write to the diff file
