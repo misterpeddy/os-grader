@@ -397,15 +397,31 @@ void listen_to_judges() {
 }
 
 /*
-** Handler for signals of type SIGLARM
-** Checks to see if any judges have max'd out their time limit - if yes destroys
-*them.
+** Intermediary handler for all signals. It will call the appropriate handler
+** based on signal type.
 */
-void alarm_handler(int signal) {
-  if (signal != SIGALRM) {
+void signal_handler(int signal) {
+  if (signal == SIGALRM) {
+    alarm_handler();
     return;
   }
+  if (signal == SIGTERM || signal == SIGINT) fatal_signal_handler();
+}
 
+/*
+** Handler for signals of type SIGTERM or SIGINT.
+** Frees up system resources
+*/
+void fatal_signal_handler(int signal) {
+  // TODO: Free resources that will live after process is destroyed.
+  exit(EXIT_FAILURE);
+}
+
+/*
+** Handler for signals of type SIGLARM
+** Checks to see if any judges have max'd out their time limit - if yes destroys them.
+*/
+void alarm_handler(int signal) {
   // Get current time
   struct timeval start, end;
   int lifetime;
@@ -517,8 +533,11 @@ int main(int argc, char **argv) {
   pipe(fd);
 
   // Set up alarm listener
-  if (signal(SIGALRM, alarm_handler) == SIG_ERR && DEBUG)
-    fatal_error("Could not register alarm listener");
+  if ((signal(SIGALRM, signal_handler) == SIG_ERR ||
+       signal(SIGTERM, signal_handler) == SIG_ERR || 
+       signal(SIGINT, signal_handler) == SIG_ERR)
+       && DEBUG)
+    fatal_error("Could not register signal handler");
 
   // Open connection to the database
   if (open_db(&db, DB_PATH))
