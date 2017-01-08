@@ -45,6 +45,16 @@ int connect_to_server(char *server, int PORT) {
 int handle_ack(char *ack) {
     if (!strncmp(ack, RCV_AOK, strlen(RCV_AOK))) {
         printf(KGRN "Server succesfully received file\n" KYEL);
+    } else if (!strncmp(ack, INV_USR, strlen(INV_USR))){
+        printf(KRED "Invalid username\n" KYEL);
+        return 1;
+    } else if (!strncmp(ack, INV_MOD, strlen(INV_MOD))){
+        printf(KRED "Invalid module number\n" KYEL);
+        return 1;
+    } else if (!strncmp(ack, UNK_ERR, strlen(UNK_ERR))){
+        printf(KRED "Unknown error occured while processing request. "
+            "Please make sure you have complied with assignment requirements.\n" KYEL);
+        return 1;
     } else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
         printf(KGRN "Succesfully compiled file\n" KYEL);
     } else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){

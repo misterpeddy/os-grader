@@ -17,19 +17,22 @@
 #define ACK_LEN 7 
 
 /* Acknowledgment messages */
-#define CMP_AOK   "CMP_AOK" /* Compilation succeeded        */
-#define CMP_ERR   "CMP_ERR" /* Compilation failed     FATAL */
-#define RUN_AOK   "RUN_AOK" /* A run succeeded              */
-#define RUN_ERR   "RUN_ERR" /* A run failed           FATAL */
-#define TIM_OUT   "TIM_OUT" /* A run timed out        FATAL */
-#define CHK_AOK   "CHK_AOK" /* A diff succeeded             */
-#define CHK_ERR   "CHK_ERR" /* A diff failed          FATAL */
+#define CMP_AOK   "CMP_AOK" /* Compilation succeeded            */
+#define CMP_ERR   "CMP_ERR" /* Compilation failed         FATAL */
+#define RUN_AOK   "RUN_AOK" /* A run succeeded                  */
+#define RUN_ERR   "RUN_ERR" /* A run failed               FATAL */
+#define TIM_OUT   "TIM_OUT" /* A run timed out            FATAL */
+#define CHK_AOK   "CHK_AOK" /* A diff succeeded                 */
+#define CHK_ERR   "CHK_ERR" /* A diff failed              FATAL */
 
-#define JDG_ERR   "JDG_ERR" /* Solution not accepted  FATAL */
-#define JDG_AOK   "JDG_AOK" /* Solution accepted      FATAL */
+#define JDG_ERR   "JDG_ERR" /* Solution not accepted      FATAL */
+#define JDG_AOK   "JDG_AOK" /* Solution accepted          FATAL */
 
-#define RCV_AOK   "RCV_AOK" /* Client request received      */
-#define BEG_FIL   "BEG_FIL" /* About to stream file         */
+#define RCV_AOK   "RCV_AOK" /* Client request received          */
+#define INV_USR   "INV_USR" /* Invalid username           FATAL */
+#define INV_MOD   "INV_MOD" /* Invalid module number      FATAL */
+#define UNK_ERR   "UNK_ERR" /* Unknown error              FATAL */
+#define BEG_FIL   "BEG_FIL" /* About to stream file             */
 
 /*
 ** Establishes a TCP connection to server on specified port

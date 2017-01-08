@@ -173,6 +173,10 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
 
   // Find the right module
   Module *module = find_module(modules, &judge->module_num);
+  if (!module) {
+    free(judge->source_path);
+    return 1;
+  }
 
   // Set number of input files
   judge->num_input_files = module->num_input_files;
@@ -273,11 +277,39 @@ void destruct_judge(Judge *judge) {
 /*************************** Request Helpers *******************************/
 
 /*
-** Returns 0 if request is invalid, 1 otherwise.
+** Returns 0 if request is valid, 1 otherwise.
 ** Valid requests have valid usernames and contain a registered module number.
 */
-char is_valid_request(Request *request, Module **modules) {
-  // TODO: Implement
+int validate_request(Request *request) {
+
+  // Send error message and return 1 if module_num not registered
+  if (!is_registered(request->module_num)) {
+    send_message(request->socket_fd, INV_MOD); 
+    return 1;
+  }
+
+  if (strlen(request->user) < MIN_USER_LEN) {
+    send_message(request->socket_fd, INV_USR);
+    return 1;
+  }
+
+  int i;
+  char *letter = &(request->user[0]);
+  // Check user for invalid characters
+  for(i = 0; i<strlen(request->user); i++, letter=&(request->user[i])){
+    
+    // If uppercase, convert to lowercase
+    if (('A' <= *letter) && (*letter <= 'Z')) *letter = tolower(*letter);
+
+    // If not [a-z0-9] send error message and return 1
+    if (!(('0' <= *letter) && (*letter <= '9')) &&
+        !(('a' <= *letter) && (*letter <= 'z'))) {
+      send_message(request->socket_fd, INV_USR); 
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 /*
@@ -287,8 +319,11 @@ char is_valid_request(Request *request, Module **modules) {
 void handle_request(Request *request, Module **modules) {
   Judge *judge = (Judge *)malloc(sizeof(Judge));
 
+  if (validate_request(request)) return;
+
   if (init_judge(judge, request, modules)) {
-    exit(EXIT_FAILURE);
+    send_message(request->socket_fd, UNK_ERR);
+    return;
   }
 
   int pid = fork();
