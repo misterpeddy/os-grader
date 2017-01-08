@@ -20,10 +20,10 @@ int parse_arguments(char **args, char *line) {
 }
 
 /*
-** Fills newfile buffer with new filename of format <user>_<ass_num>_XXXXX.c
+** Fills newfile buffer with new filename of format <user>_<module_num>_XXXXX.c
 ** Returns a pointer to newfile
 */
-char *generate_filename(char *newfile, char *user, char *ass_num) {
+char *generate_filename(char *newfile, char *user, char *module_num) {
   int k=0;
   
   // Add username
@@ -33,9 +33,9 @@ char *generate_filename(char *newfile, char *user, char *ass_num) {
 
   newfile[k++] = '_';
 
-  // Add assignment number
-  for (int i=0; i<strlen(ass_num);) {
-    newfile[k++] = ass_num[i++];
+  // Add module number
+  for (int i=0; i<strlen(module_num);) {
+    newfile[k++] = module_num[i++];
   }
 
   newfile[k++] = '_';
@@ -131,9 +131,9 @@ int receive_request(Request *request) {
       // Parse the header and capture data
       parse_arguments(header_tokens, receive_buffer);
       strcpy(request->user, header_tokens[1]);
-      strcpy(request->ass_num, header_tokens[2]);
+      strcpy(request->module_num, header_tokens[2]);
       bytes_remaining = atoi(header_tokens[3]);
-      strcpy(request->filename, generate_filename(&new_filename, request->user, request->ass_num));
+      strcpy(request->filename, generate_filename(&new_filename, request->user, request->module_num));
     
     } else {
       // Print error message and exit

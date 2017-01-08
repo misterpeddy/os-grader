@@ -76,13 +76,13 @@ int handle_ack(char *ack) {
 }
 
 /*
-** Sends the request packet {username, assignment number, source file}
+** Sends the request packet {username, module number, source file}
 ** to the server over socket_fd. It then waits for the server to send
 ** back acknowledgement messages, echoing them as they are received.
 ** It halts when server closes the connection.
 ** TODO: Break up into 2 loosely coupled routines.
 */
-int send_request(int socket_fd, char *lfile, char *user, char *ass_num) {
+int send_request(int socket_fd, char *lfile, char *user, char *module_num) {
 
   // Open file to send
   FILE *file_to_send = fopen(lfile, "r");
@@ -105,7 +105,7 @@ int send_request(int socket_fd, char *lfile, char *user, char *ass_num) {
   // Write request header
   char write_buffer[TCP_PACKET_SIZE];
   sprintf(write_buffer, "%s%s%s%s%s%s%d\r\n", HEADER_PREFIX, ARG_DELIM, user,
-          ARG_DELIM, ass_num, ARG_DELIM, file_size);
+          ARG_DELIM, module_num, ARG_DELIM, file_size);
   send(socket_fd, write_buffer, sizeof(write_buffer), 0);
 
   memset(&write_buffer, 0, TCP_PACKET_SIZE);
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 
   // Make sure we got the right number of arguments
   if (argc != 4) {
-    printf("USAGE: %s <Username> <Assignment number> <File to submit>\n", argv[0]);
+    printf("USAGE: %s <Username> <Module number> <File to submit>\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
   const int port_number = 31337;
   const char *file_to_send = argv[3];
   const char *user = argv[1];
-  const char *ass_num = argv[2];
+  const char *module_num = argv[2];
 
   // Establish a TCP connection to the server
   int socket_fd = connect_to_server(server_address, port_number);
@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
   }
 
   // Send the request and echo results
-  if (send_request(socket_fd, file_to_send, user, ass_num)) {
+  if (send_request(socket_fd, file_to_send, user, module_num)) {
     close(socket_fd);
     exit(EXIT_FAILURE);
   }

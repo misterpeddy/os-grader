@@ -16,17 +16,20 @@
 
 #define ACK_LEN 7 
 
-const char RCV_AOK[] = "RCV_AOK";
-const char CMP_AOK[] = "CMP_AOK";
-const char CMP_ERR[] = "CMP_ERR";
-const char RUN_AOK[] = "RUN_AOK";
-const char RUN_ERR[] = "RUN_ERR";
-const char CHK_AOK[] = "CHK_AOK";
-const char CHK_ERR[] = "CHK_ERR";
-const char JDG_AOK[] = "JDG_AOK";
-const char JDG_ERR[] = "JDG_ERR";
-const char TIM_OUT[] = "TIM_OUT";
-const char BEG_FIL[] = "BEG_FIL";
+/* Acknowledgment messages */
+#define CMP_AOK   "CMP_AOK" /* Compilation succeeded        */
+#define CMP_ERR   "CMP_ERR" /* Compilation failed     FATAL */
+#define RUN_AOK   "RUN_AOK" /* A run succeeded              */
+#define RUN_ERR   "RUN_ERR" /* A run failed           FATAL */
+#define TIM_OUT   "TIM_OUT" /* A run timed out        FATAL */
+#define CHK_AOK   "CHK_AOK" /* A diff succeeded             */
+#define CHK_ERR   "CHK_ERR" /* A diff failed          FATAL */
+
+#define JDG_ERR   "JDG_ERR" /* Solution not accepted  FATAL */
+#define JDG_AOK   "JDG_AOK" /* Solution accepted      FATAL */
+
+#define RCV_AOK   "RCV_AOK" /* Client request received      */
+#define BEG_FIL   "BEG_FIL" /* About to stream file         */
 
 /*
 ** Establishes a TCP connection to server on specified port

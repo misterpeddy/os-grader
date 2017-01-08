@@ -68,7 +68,7 @@ typedef struct {
   char *source_path;            /* Source code filepath                   */
   char fd_w[MAX_FD];            /* C string containing pipe write-end fd  */
   char user[MAX_FILENAME_LEN];  /* Username of submitted file's owner     */
-  char ass_num[2 << 5];         /* Assignment number                      */
+  char module_num[2 << 5];      /* Module number                      */
   struct timeval time_struct;   /* Time of creation of judge              */
   int num_input_files;          /* Number of input files                  */
   char **input_files;           /* Array of input file paths              */
@@ -78,9 +78,9 @@ typedef struct {
 } Judge;
 
 typedef struct {
-  char number[MAX_FILENAME_LEN];  /* Assignment number          */
+  char number[MAX_FILENAME_LEN];  /* Module number              */
   int num_input_files;            /* Number of input files      */
   char **input_files;             /* Array of input file paths  */
-} Assignment;
+} Module;
 
 #endif

@@ -3,7 +3,7 @@
 
 typedef struct {
   char *user;
-  char *ass_num;
+  char *module_num;
   char *filename;
   int socket_fd;
 } Request;

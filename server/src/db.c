@@ -10,7 +10,7 @@
 /*
 ** To be used as the callback to sqlite3_exec() for SELECT statements.
 ** Assumes the first argument is a string, which the response is written to, with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
 ** If no rows are returned, it will leave passed_buffer untouched.
 ** Non-zero return value would cause a SQLITE_ABORT return value for the responsible sqlite3_exec() call. 
 */
@@ -60,11 +60,11 @@ int create_table(sqlite3 *db) {
 	sprintf(sql_command, 
       "CREATE TABLE %s("							/* DB_TABLE_NAME */ 
       "%s     CHAR(%d)	NOT NULL," 		/* DB_COL_USER */
-      "%s  		CHAR(%d)  NOT NULL,"  	/* DB_COL_ASSNUM */
+      "%s  		CHAR(%d)  NOT NULL,"  	/* DB_COL_MODNUM */
       "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT */
       , DB_TABLE_NAME
 			, DB_COL_USER, MAX_FILENAME_LEN
-			, DB_COL_ASSNUM, MAX_ASSNUM_DIGITS
+			, DB_COL_MODNUM, MAX_MODNUM_DIGITS
 			, DB_COL_RESULT, MAX_ACK_LEN);
 
 	// Execute SQL statement
@@ -85,7 +85,7 @@ int create_table(sqlite3 *db) {
 ** in DB_TABLE_NAME with the provided values. All arguments must be
 ** non-NULL. Returns 1 on error and 0 otherwise.
 */
-int insert_record(sqlite3 *db, char *user, char *ass_num, char *result) {
+int insert_record(sqlite3 *db, char *user, char *module_num, char *result) {
 	// Declare error buffer and return code
 	char *error_message;
 	int return_code;
@@ -98,8 +98,8 @@ int insert_record(sqlite3 *db, char *user, char *ass_num, char *result) {
 			"(%s, %s, %s) "
 			"VALUES ('%s', '%s', '%s'); "
 			, DB_TABLE_NAME 
-			, DB_COL_USER, DB_COL_ASSNUM, DB_COL_RESULT
-			, user, ass_num, result);
+			, DB_COL_USER, DB_COL_MODNUM, DB_COL_RESULT
+			, user, module_num, result);
 
 	// Execute SQL statement
 	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
@@ -109,14 +109,14 @@ int insert_record(sqlite3 *db, char *user, char *ass_num, char *result) {
 		return 1;
 	}
 
-	if (DEBUG) printf("Result <%s, %s, %s> was recorded successfully\n", user, ass_num, result);
+	if (DEBUG) printf("Result <%s, %s, %s> was recorded successfully\n", user, module_num, result);
 	return 0;
 }
 
 /*
 ** Assuming a valid db connection, lookup_user looks up all entries for a user
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
 int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
@@ -144,12 +144,12 @@ int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
 }
 
 /*
-** Assuming a valid db connection, lookup_assignment looks up all entries for an assignment
+** Assuming a valid db connection, lookup_module looks up all entries for an module
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
-int lookup_assignment(sqlite3 *db, char *ass_num, char *response_buffer) {
+int lookup_module(sqlite3 *db, char *module_num, char *response_buffer) {
 	// Declare error buffer and return code
 	char *error_message;
 	int return_code;
@@ -159,7 +159,7 @@ int lookup_assignment(sqlite3 *db, char *ass_num, char *response_buffer) {
 	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
 	sprintf(sql_command,
 			"SELECT * FROM %s WHERE %s='%s'"
-			, DB_TABLE_NAME, DB_COL_ASSNUM, ass_num);
+			, DB_TABLE_NAME, DB_COL_MODNUM, module_num);
 	
 	// Execute SQL statement
 	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, response_buffer, &error_message);
@@ -169,7 +169,7 @@ int lookup_assignment(sqlite3 *db, char *ass_num, char *response_buffer) {
 		return 1;
 	}
 
-	printf("Succesfully retrieved records for assignment %s\n", ass_num);
+	printf("Succesfully retrieved records for module %s\n", module_num);
 	return 0;
 }
 

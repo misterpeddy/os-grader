@@ -21,99 +21,138 @@ pthread_mutex_t inc_lock;
 Judge *active_judges[MAX_JUDGES];
 pthread_mutex_t judge_lock;
 
-/************************ Judge Routines ****************************/
+/************************ Module Helpers ****************************/
 
-char is_output_file (char *filename) {
-  int k=0;
-  return (filename[k++] == OUTFILE_PREFIX[0]) 
-    && (filename[k++] == 'u')
-    && (filename[k++] == 't') 
-    && (filename[k++] == '_');
+/*
+** Returns positive int if filename is a valid input filename. 
+** This means, it is not "." or ".." and does not have th
+** OUTFILE_PREFIX. Returns 0 otherwise.
+*/
+char is_input_file (char *filename) {
+  if (!strcmp(filename, ".") || !(filename, "..")) return 0;
+  if (strlen(filename) <= strlen(OUTFILE_PREFIX)) return 1;
+  int i=0;
+  for (; i<strlen(OUTFILE_PREFIX); i++) {
+    if (filename[i] != OUTFILE_PREFIX[i]) return 1;
+  }
+  return filename[i] != '_';
 }
 
-void init_assignment(Assignment *assignment, struct dirent *ass_dir) {
-  char assignment_path[MAX_FILENAME_LEN];
-  sprintf(assignment_path, "%s%s", MODULES_ROOT, ass_dir->d_name);
-  DIR *assignment_dir = opendir(assignment_path);
-  
-  // Set assignment name
-  strcpy(&assignment->number, ass_dir->d_name);
+/*
+** Returns 1 if module_name is a registered module, 0 otherwise.
+*/
+char is_registered(char *module_name) {
+  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+    if (!strcmp(module_name, REGISTERED_MODULES[i])) return 1;
+  }
+  return 0;
+}
+
+/************************ Module Routines ****************************/
+
+/*
+** Given an empty module, fills it with the content of dirent provided.
+** Specifically, sets the module number, num_input_files and input_files array.
+*/
+void init_module(Module *module, struct dirent *module_entry) {
+
+  // Compute path of the module, set module number
+  char module_path[MAX_FILENAME_LEN];
+  sprintf(module_path, "%s%s", MODULES_ROOT, module_entry->d_name);
+  strcpy(&module->number, module_entry->d_name);
+
+  // Open module directory 
+  DIR *module_dir = opendir(module_path);
 
   // Count number of input files
   int num_files=0;
   struct dirent *ent;
-  while ((ent = readdir(assignment_dir)) != NULL) {
-    if (strcmp(ent->d_name, ".") 
-        && strcmp(ent->d_name, "..")
-        && !is_output_file(ent->d_name)) {
+  while ((ent = readdir(module_dir)) != NULL) {
+    if (is_input_file(ent->d_name)) {
           num_files++; 
-          printf("%s\n",ent->d_name);
     }
   }
   
-  assignment->num_input_files = num_files;
+  // Set number of input files, return if none found
+  module->num_input_files = num_files;
   if (!num_files) return;
   
   // Allocate space for the input file paths
-  assignment->input_files = (char **) malloc(num_files * sizeof(char *));
+  module->input_files = (char **) malloc(num_files * sizeof(char *));
   
   // Reset the directory cursor
-  closedir(assignment_dir);
-  assignment_dir = opendir(assignment_path);
+  closedir(module_dir);
+  module_dir = opendir(module_path);
 
-  // Set path for each input file in assignment struct
+  // Set path for each input file in module struct
   int file_counter=0;
-  while ((ent = readdir(assignment_dir)) != NULL) {
-    if (strcmp(ent->d_name, ".") 
-        && strcmp(ent->d_name, "..")
-        && !is_output_file(ent->d_name)) {
-          assignment->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
-          strcpy(assignment->input_files[file_counter], ent->d_name);
+  while ((ent = readdir(module_dir)) != NULL) {
+    if (is_input_file(ent->d_name)) {
+          module->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
+          strcpy(module->input_files[file_counter], ent->d_name);
           file_counter++; 
     }
   }
 }
 
-int init_assignments(Assignment **assignments) { 
+/*
+** Initializes the modules array by calling init_module for each registered
+** module.
+*/
+int init_modules(Module **modules) { 
   DIR *dir = opendir(MODULES_ROOT);
   struct dirent *ent;
-  int dir_counter=0;
+  int mod_count=0;
 
-  // Go through each assignment in modules directory
+  // Allocate space for and call init_module for each registered 
+  // module in modules directory
   while ((ent = readdir(dir)) != NULL) {
-    if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
-      assignments[dir_counter] = (Assignment *)malloc(sizeof(Assignment));
-      init_assignment(assignments[dir_counter], ent);
-      dir_counter++;
+    if (strcmp(ent->d_name, ".") && 
+        strcmp(ent->d_name, "..") &&
+        is_registered(ent->d_name)) {
+      modules[mod_count] = (Module *)malloc(sizeof(Module));
+      init_module(modules[mod_count++], ent);
     }
   }
 }
 
-destroy_assignment(Assignment *assignment) {
+/*
+** Destructs a module struct.
+** TODO: Call it in fatal signal handler
+*/
+destruct_module(Module *module) {
   int i=0;
-  for (; i<assignment->num_input_files; i++) {   
+  for (; i<module->num_input_files; i++) {   
+    free(module->input_files[i]);
   }
+  free(module);
 }
 
-destroy_assignments(Assignment **assignments) {
+/*
+** Destructs the modules array by calling destuct_module.
+** TODO: Call it in fatal signal handler
+*/
+destruct_modules(Module **modules) {
   int i=0, j=0;
   for (; i<NUM_REGISTERED_MODULES; i++) {
-    destroy_assignment(assignments[i]);
-    free(assignments[i]);
+    destruct_module(modules[i]);
   }
+  free(modules);
 }
 
-Assignment *find_assignment(Assignment **assignments, char *ass_num) { 
+Module *find_module(Module **modules, char *module_num) { 
   for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
-    if (!strcmp(assignments[i]->number, ass_num)) return assignments[i];
+    if (!strcmp(modules[i]->number, module_num)) return modules[i];
   }
   return NULL;
 }
 
+/************************ Judge Routines ****************************/
+
 /*
 ** Initializes the judge struct and adds it to active_judges
 */
-int init_judge(Judge *judge, Request *request, Assignment **assignments) {
+int init_judge(Judge *judge, Request *request, Module **modules) {
   // Set the judge id
   pthread_mutex_lock(&inc_lock);
   sprintf(&judge->id, "%ld", id_incrementor++);
@@ -129,20 +168,20 @@ int init_judge(Judge *judge, Request *request, Assignment **assignments) {
   // Capture username
   strcpy(&judge->user, request->user);
 
-  // Capture assignment number
-  strcpy(&judge->ass_num, request->ass_num);
+  // Capture module number
+  strcpy(&judge->module_num, request->module_num);
 
-  // Find the right assignment
-  Assignment *assignment = find_assignment(assignments, &judge->ass_num);
+  // Find the right module
+  Module *module = find_module(modules, &judge->module_num);
 
   // Set number of input files
-  judge->num_input_files = assignment->num_input_files;
+  judge->num_input_files = module->num_input_files;
 
   // Capture input files path
   judge->input_files = (char **)malloc(judge->num_input_files);
   for (int i=0; i< judge->num_input_files; i++) {
-    judge->input_files[i] = (char *)malloc(strlen(assignment->input_files[i]));
-    strcpy(judge->input_files[i], assignment->input_files[i]);
+    judge->input_files[i] = (char *)malloc(strlen(module->input_files[i]));
+    strcpy(judge->input_files[i], module->input_files[i]);
   }
 
   // Set command line arguments
@@ -151,7 +190,7 @@ int init_judge(Judge *judge, Request *request, Assignment **assignments) {
   judge->exec_args[k++] = &judge->id;
   judge->exec_args[k++] = judge->source_path;
   judge->exec_args[k++] = &judge->user;
-  judge->exec_args[k++] = &judge->ass_num;
+  judge->exec_args[k++] = &judge->module_num;
   judge->exec_args[k++] = judge->fd_w;
   judge->exec_args[k++] = judge->input_files[0];
   judge->exec_args[k++] = judge->input_files[1];
@@ -231,7 +270,51 @@ void destruct_judge(Judge *judge) {
   free(judge);
 }
 
-/************************* I/O Routines*****************************/
+/*************************** Request Helpers *******************************/
+
+/*
+** Returns 0 if request is invalid, 1 otherwise.
+** Valid requests have valid usernames and contain a registered module number.
+*/
+char is_valid_request(Request *request, Module **modules) {
+  // TODO: Implement
+}
+
+/*
+** Handler for incoming requests
+** Creates a Judge struct with relevant info and forks off the process.
+*/
+void handle_request(Request *request, Module **modules) {
+  Judge *judge = (Judge *)malloc(sizeof(Judge));
+
+  if (init_judge(judge, request, modules)) {
+    exit(EXIT_FAILURE);
+  }
+
+  int pid = fork();
+  if (pid == 0) {
+    // Close reading end since executor will not read from the pipe
+    close(fd[0]);
+
+    // Locate judge binary
+    char judge_bin[MAX_FILENAME_LEN];
+    memset(&judge_bin, 0, MAX_FILENAME_LEN);
+    strcpy(&judge_bin, BIN_ROOT);
+    strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
+
+    // Run the judge binary
+    if (DEBUG) printf("\nStarting Judge\n", judge_bin);
+    execv(judge_bin, judge->exec_args);
+    perror("exec failure");
+    exit(EXIT_FAILURE);
+  } else {
+    judge->pid = pid;
+
+    alarm(MAX_TIME_ALLOWED);
+  }
+}
+
+/**************************** Coordinator Routines *******************************/
 
 /*
 ** Blocking call to sit and listen on the read-end of the judges shared pipe.
@@ -278,8 +361,6 @@ void listen_to_judges() {
   // TODO: free(message) in final destructor
 }
 
-/**************************** Handlers *******************************/
-
 /*
 ** Handler for signals of type SIGLARM
 ** Checks to see if any judges have max'd out their time limit - if yes destroys
@@ -315,7 +396,7 @@ void alarm_handler(int signal) {
         send_message(judge->socket_fd, TIM_OUT);
 
         // Record result in the database
-        insert_record(db, judge->user, judge->ass_num, TIM_OUT);
+        insert_record(db, judge->user, judge->module_num, TIM_OUT);
 
         // Do clean up for the judge
         int judge_pid = judge->pid;
@@ -327,40 +408,6 @@ void alarm_handler(int signal) {
         wait(judge_pid);
       }
     }
-  }
-}
-
-/*
-** Handler for incoming requests
-** Creates a Judge struct with relevant info and forks off the process.
-*/
-void handle_request(Request *request, Assignment **assignments) {
-  Judge *judge = (Judge *)malloc(sizeof(Judge));
-
-  if (init_judge(judge, request, assignments)) {
-    exit(EXIT_FAILURE);
-  }
-
-  int pid = fork();
-  if (pid == 0) {
-    // Close reading end since executor will not read from the pipe
-    close(fd[0]);
-
-    // Locate judge binary
-    char judge_bin[MAX_FILENAME_LEN];
-    memset(&judge_bin, 0, MAX_FILENAME_LEN);
-    strcpy(&judge_bin, BIN_ROOT);
-    strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
-
-    // Run the judge binary
-    if (DEBUG) printf("\nStarting Judge\n", judge_bin);
-    execv(judge_bin, judge->exec_args);
-    perror("exec failure");
-    exit(EXIT_FAILURE);
-  } else {
-    judge->pid = pid;
-
-    alarm(MAX_TIME_ALLOWED);
   }
 }
 
@@ -384,8 +431,8 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
     // Compute error file path
     char log_file[MAX_FILENAME_LEN];
-    sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->ass_num, judge->user, 
-        judge->ass_num, ERRORFILE_SUFFIX);
+    sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->module_num, judge->user, 
+        judge->module_num, ERRORFILE_SUFFIX);
 
     // Send judge error ack
     send(judge->socket_fd, JDG_ERR, strlen(JDG_ERR), 0); 
@@ -395,7 +442,7 @@ void act_on_ack(Judge *judge, char *ack_code) {
   }
 
   // Record the result in database
-  insert_record(db, judge->user, judge->ass_num, ack_code);
+  insert_record(db, judge->user, judge->module_num, ack_code);
 
   if (DEBUG)
     printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
@@ -409,7 +456,7 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
 void init_request(Request *request) {
   request->user = (char *)malloc(MAX_FILENAME_LEN);
-  request->ass_num = (char *)malloc(MAX_FILENAME_LEN);
+  request->module_num = (char *)malloc(MAX_FILENAME_LEN);
   request->filename = (char *)malloc(MAX_FILENAME_LEN);
 }
 
@@ -417,6 +464,7 @@ void fatal_error(char *message) {
   printf("Fatal: %s\n", message);
   exit(EXIT_FAILURE);
 }
+
 /******************************* Main ***********************************/
 
 /*
@@ -426,9 +474,9 @@ int main(int argc, char **argv) {
   // Change current working directory to root of the application
   chdir(APP_ROOT);
 
-  // Initialize assignments
-  Assignment assignments[NUM_REGISTERED_MODULES];
-  init_assignments(&assignments);
+  // Initialize modules
+  Module modules[NUM_REGISTERED_MODULES];
+  init_modules(&modules);
 
   // Set up shared pipe
   pipe(fd);
@@ -477,9 +525,8 @@ int main(int argc, char **argv) {
     // TODO: Move this to a new thread to handle concurrent requests
     receive_request(&request);
 
-    handle_request(&request, &assignments);
+    handle_request(&request, &modules);
   }
   
-
   // TODO: Cleanup {disconnect from db, free listen_queue_socket}
 }

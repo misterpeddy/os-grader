@@ -7,12 +7,12 @@
 
 #define MAX_SQL_RESPONSE_LEN  1024
 #define MAX_SQL_COMMAND_LEN   512
-#define MAX_ASSNUM_DIGITS     5
+#define MAX_MODNUM_DIGITS     5
 #define MAX_ACK_LEN           8
 
 #define DB_TABLE_NAME         "SUBMISSIONS"
 #define DB_COL_USER           "USER"
-#define DB_COL_ASSNUM         "ASS_NUM"
+#define DB_COL_MODNUM         "MODULE_NUM"
 #define DB_COL_RESULT         "RESULT"
 
 #define SQL_COL_DELIM         "*"
@@ -22,7 +22,7 @@
 /*
 ** To be used as the callback to sqlite3_exec() for SELECT statements.
 ** Assumes the first argument is a string, which the response is written to, with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
 ** If no rows are returned, it will leave passed_buffer untouched.
 ** Non-zero return value would cause a SQLITE_ABORT return value for the responsible sqlite3_exec() call. 
 */
@@ -46,23 +46,23 @@ int create_table(sqlite3 *db);
 ** in DB_TABLE_NAME with the provided values. All arguments must be
 ** non-NULL. Returns 1 on error and 0 otherwise.
 */
-int insert_record(sqlite3 *db, char *user, char *ass_num, char *result);
+int insert_record(sqlite3 *db, char *user, char *module_num, char *result);
 
 /*
 ** Assuming a valid db connection, lookup_user looks up all entries for a user
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
 int lookup_user(sqlite3 *db, char *user, char *response_buffer);
 
 /*
-** Assuming a valid db connection, lookup_assignment looks up all entries for an assignment
+** Assuming a valid db connection, lookup_module looks up all entries for an module
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><ASSIGNMENT NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
-int lookup_assignment(sqlite3 *db, char *ass_num, char *response_buffer);
+int lookup_module(sqlite3 *db, char *module_num, char *response_buffer);
 
 /*
 ** Closes the connection to the database.

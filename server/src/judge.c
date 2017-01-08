@@ -15,10 +15,10 @@ char diff_file[MAX_FILENAME_LEN];
 /************************ Judge Routines *****************************/
 
 /*
-** Creates sandbox user/ass_num
+** Creates sandbox user/module_num
 ** reroutes the stdout and stderr of the process to log_file and err_file
 */
-void init_sandbox(char *user, char *ass_num) {
+void init_sandbox(char *user, char *module_num) {
   // Change current working directory to the submissions folder
   chdir(SUB);
 
@@ -27,23 +27,23 @@ void init_sandbox(char *user, char *ass_num) {
   sprintf(&command1, "mkdir %s", user);
   if (access(user, F_OK) == -1) system(command1);
 
-  // Remove assignment directory
+  // Remove module directory
   char command2[MAX_COMMAND_LEN];
-  sprintf(&command2, "rm -rf %s/%s", user, ass_num);
+  sprintf(&command2, "rm -rf %s/%s", user, module_num);
   system(command2);
 
-  // Create assignment directory
+  // Create module directory
   char command3[MAX_COMMAND_LEN];
-  sprintf(&command3, "mkdir %s/%s", user, ass_num);
+  sprintf(&command3, "mkdir %s/%s", user, module_num);
   system(command3);
 
   // Log stdout
-  sprintf(&log_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num,
+  sprintf(&log_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
           LOGFILE_SUFFIX);
   freopen(log_file, "w", stdout);
 
   // Log stderr
-  sprintf(&err_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num,
+  sprintf(&err_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
           ERRORFILE_SUFFIX);
   freopen(err_file, "w", stderr);
 
@@ -54,26 +54,26 @@ void init_sandbox(char *user, char *ass_num) {
 }
 
 /*
-** Compiles C file (temp/filename) for user for assignment ass_num
-** Binary will be at user/ass_num/bin
+** Compiles C file (temp/filename) for user for module module_num
+** Binary will be at user/module_num/bin
 ** Returns 0 if compiled with no errors otherwise positive number
 */
-int compile_source(char *filename, char *user, char *ass_num) {
+int compile_source(char *filename, char *user, char *module_num) {
   if (DEBUG)
-    printf("\n%sCompiling assignment %s [%s] for %s%s\n", FILLER, ass_num,
+    printf("\n%sCompiling module %s [%s] for %s%s\n", FILLER, module_num,
            filename, user, FILLER);
 
   // Compile source
   char command[MAX_COMMAND_LEN];
   memset(&command, 0, MAX_COMMAND_LEN);
-  sprintf(&command, "gcc -w ../%s/%s -o %s/%s/%s", TEMP, filename, user, ass_num,
+  sprintf(&command, "gcc -w ../%s/%s -o %s/%s/%s", TEMP, filename, user, module_num,
           BIN);
   if (DEBUG) printf("$(%s)\n", command);
   system(command);
 
   if (DEBUG)
-    printf("%sFinished compiling assignment %s [%s] for %s%s\n\n", FILLER,
-           ass_num, filename, user, FILLER);
+    printf("%sFinished compiling module %s [%s] for %s%s\n\n", FILLER,
+           module_num, filename, user, FILLER);
 
   // Read error log file stats
   struct stat log_stat;
@@ -83,14 +83,14 @@ int compile_source(char *filename, char *user, char *ass_num) {
 }
 
 /*
-** Runs the program submissions/<user>/<ass_num>/bin with input modules/<ass_num>/input_file
+** Runs the program submissions/<user>/<module_num>/bin with input modules/<module_num>/input_file
 */
-int run_program(char *user, char *ass_num, char *input_file) {
+int run_program(char *user, char *module_num, char *input_file) {
   if (DEBUG)
-    printf("\n%sRunning %s/%s/%s%s\n", FILLER, user, ass_num, BIN, FILLER);
+    printf("\n%sRunning %s/%s/%s%s\n", FILLER, user, module_num, BIN, FILLER);
 
   // Redirect output to OUT
-  sprintf(&out_file, "%s/%s/%s_%s_%s_%s", user, ass_num, user, ass_num,
+  sprintf(&out_file, "%s/%s/%s_%s_%s_%s", user, module_num, user, module_num,
           OUTFILE_PREFIX, input_file);
   freopen(out_file, "w", stdout);
 
@@ -98,10 +98,10 @@ int run_program(char *user, char *ass_num, char *input_file) {
   char command[MAX_COMMAND_LEN];
   memset(&command, 0, MAX_COMMAND_LEN);
   if (input_file) {
-    sprintf(&command, "./%s/%s/%s < ../%s/%s/%s", user, ass_num, BIN, MODULES,
-            ass_num, input_file);
+    sprintf(&command, "./%s/%s/%s < ../%s/%s/%s", user, module_num, BIN, MODULES,
+            module_num, input_file);
   } else {
-    sprintf(&command, "./%s/%s/%s", user, ass_num, BIN);
+    sprintf(&command, "./%s/%s/%s", user, module_num, BIN);
   }
   system(command);
 
@@ -110,7 +110,7 @@ int run_program(char *user, char *ass_num, char *input_file) {
 
   if (DEBUG) printf("$(%s)\n", command);
   if (DEBUG)
-    printf("%sFinished running %s/%s/%s%s\n\n", FILLER, user, ass_num, BIN,
+    printf("%sFinished running %s/%s/%s%s\n\n", FILLER, user, module_num, BIN,
            FILLER);
 
   // Read error log file stats
@@ -121,21 +121,21 @@ int run_program(char *user, char *ass_num, char *input_file) {
 
 /*
 ** Compares the following 2 files:
-** submissions/<user>/<ass_num>/<user>_<ass_num>_out_<input_file>
-** master/<ass_num>/out_<input_file>
+** submissions/<user>/<module_num>/<user>_<module_num>_out_<input_file>
+** master/<module_num>/out_<input_file>
 */
-int judge(char *user, char *ass_num, char *input_file) {
+int judge(char *user, char *module_num, char *input_file) {
   if (DEBUG)
-    printf("\n%sJudging assignment %s with input %s for %s%s\n", FILLER,
-           ass_num, input_file, user, FILLER);
+    printf("\n%sJudging module %s with input %s for %s%s\n", FILLER,
+           module_num, input_file, user, FILLER);
 
   // Set up file to send diff to
-  sprintf(&diff_file, "%s/%s/%s_%s_%s", user, ass_num, user, ass_num,
+  sprintf(&diff_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
           DIFF_SUFFIX);
 
   // Set up master file path
   char master_file[MAX_FILENAME_LEN];
-  sprintf(&master_file, "../%s/%s/%s_%s", MODULES, ass_num, OUTFILE_PREFIX,
+  sprintf(&master_file, "../%s/%s/%s_%s", MODULES, module_num, OUTFILE_PREFIX,
           input_file);
 
   // Execute the diff and write to the diff file
@@ -145,8 +145,8 @@ int judge(char *user, char *ass_num, char *input_file) {
   int return_code = system(command);
 
   if (DEBUG)
-    printf("%sFinished judging assignment %s with input %s for %s%s\n\n",
-           FILLER, ass_num, input_file, user, FILLER);
+    printf("%sFinished judging module %s with input %s for %s%s\n\n",
+           FILLER, module_num, input_file, user, FILLER);
 
   // Read error log file stats
   struct stat log_stat;
@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
   // Check arguments
   if (argc < 5) {
     printf(
-        "Usage: %s <judge id> <source file> <username> <assignment number> \
+        "Usage: %s <judge id> <source file> <username> <module number> \
 			<pipe fd> [<input files>...]\n",
         argv[0]);
     exit(EXIT_FAILURE);
@@ -226,13 +226,13 @@ int main(int argc, char **argv) {
   char *judge_id = argv[k++];
   char *source_file = argv[k++];
   char *user = argv[k++];
-  char *ass_num = argv[k++];
+  char *module_num = argv[k++];
   int pipe_fd = atoi(argv[k++]);
   int num_input_files = argc - k;
   char **input_files = &argv[k];
 
   // Create sandbox
-  init_sandbox(user, ass_num);
+  init_sandbox(user, module_num);
 
   // Log arguments
   if (DEBUG) {
@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
   }
 
   // Compile submitted source code
-  int comp_result = compile_source(source_file, user, ass_num);
+  int comp_result = compile_source(source_file, user, module_num);
 
   // Write compilation result code to pipe, exit if errored
   if (comp_result) {
@@ -255,7 +255,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < num_input_files; i++) {
     // Run and exit if errored
-    if (run_program(user, ass_num, input_files[i])) {
+    if (run_program(user, module_num, input_files[i])) {
       if (DEBUG) printf("%sRun #%d failed - Exiting%s\n\n", FILLER, i, FILLER);
       send_ack(pipe_fd, RUN_ERR, judge_id);
       clean_and_exit(EXIT_FAILURE);
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
     send_ack(pipe_fd, RUN_AOK, judge_id);
 
     // Judge the output against master
-    if (judge(user, ass_num, input_files[i])) {
+    if (judge(user, module_num, input_files[i])) {
       if (DEBUG)
         printf("%sFailed test case #%d - Exiting%s\n\n", FILLER, i, FILLER);
       send_ack(pipe_fd, CHK_ERR, judge_id);
