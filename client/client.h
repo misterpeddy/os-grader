@@ -40,4 +40,19 @@
 */
 int connect_to_server(char *server, int PORT);
 
+/*
+** If ack is an ack_code, echos its meaning, otherwise echos 
+** the content of the message.
+** Returns 1 if no more messages will be received
+*/
+int handle_ack(char *ack);
+
+/*
+** Sends the request packet {username, module number, source file}
+** to the server over socket_fd. It then waits for the server to send
+** back acknowledgement messages, echoing them as they are received.
+** It halts when server closes the connection.
+** TODO: Break up into 2 loosely coupled routines.
+*/
+int send_request(int socket_fd, char *lfile, char *user, char *module_num); 
 
