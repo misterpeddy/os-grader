@@ -47,6 +47,11 @@
 #define TEMP "tmp"
 #define SUB "submissions"
 
+/* Command line argument options */
+#define RUN_SERVER      "runserver"
+#define MODULE_RESULTS  "module"
+#define USER_RESULTS    "user"
+
 /* Acknowledgment messages */
 #define CMP_AOK   "CMP_AOK" /* Compilation succeeded            */
 #define CMP_ERR   "CMP_ERR" /* Compilation failed         FATAL */
@@ -72,7 +77,7 @@ typedef struct {
   char *source_path;            /* Source code filepath                   */
   char fd_w[MAX_FD];            /* C string containing pipe write-end fd  */
   char user[MAX_FILENAME_LEN];  /* Username of submitted file's owner     */
-  char module_num[2 << 5];      /* Module number                      */
+  char module_num[2 << 5];      /* Module number                          */
   struct timeval time_struct;   /* Time of creation of judge              */
   int num_input_files;          /* Number of input files                  */
   char **input_files;           /* Array of input file paths              */

@@ -21,7 +21,7 @@ int parse_arguments(char **args, char *line) {
 
 /*
 ** Fills newfile buffer with new filename of format <user>_<module_num>_XXXXX.c
-** Returns a pointer to newfile
+** Returns a pointer to newfile, where XXXXX is a "random" number.
 */
 char *generate_filename(char *newfile, char *user, char *module_num) {
   int k=0;

@@ -25,7 +25,7 @@ pthread_mutex_t judge_lock;
 
 /*
 ** Returns positive int if filename is a valid input filename. 
-** This means, it is not "." or ".." and does not have th
+** Valid input filename:  not "." or ".." and does not have the
 ** OUTFILE_PREFIX. Returns 0 otherwise.
 */
 char is_input_file (char *filename) {
@@ -353,16 +353,17 @@ void handle_request(Request *request, Module **modules) {
 
 /*
 ** Blocking call to sit and listen on the read-end of the judges shared pipe.
+** Message format: <message size><delimiter><judge_id><delimiter><ack_code><delimiter>
 ** When receives a fatal ack {CMP_ERR, RUN_ERR, CHK_ERR} or judge complete
 ** {JDG_AOK} it destructs that judge and records its run result.
-** TODO: Actually record the result
 */
 void listen_to_judges() {
-  // TODO: Clean this up - bring decs out, free message
+  int bytes_received, bytes_read, pipe_in = fd[0];
+  char *message_content[MAX_PACKET_SIZE];
+  char *message = &message_content;
   while (1) {
     // Block until receive an ack to process
-    int bytes_received, pipe_in = fd[0], bytes_read = 0;
-    char *message = (char *)malloc(MAX_PACKET_SIZE);
+    bytes_read = 0;
     memset(message, 0, MAX_PACKET_SIZE);
     bytes_received = read(pipe_in, message, MAX_PACKET_SIZE);
 
@@ -397,15 +398,19 @@ void listen_to_judges() {
 }
 
 /*
-** Intermediary handler for all signals. It will call the appropriate handler
+** Generic signal handler registered for all signals. It will call the appropriate handler
 ** based on signal type.
 */
 void signal_handler(int signal) {
-  if (signal == SIGALRM) {
-    alarm_handler();
-    return;
+  switch (signal) {
+    case(SIGALRM):
+      alarm_handler();
+      break;
+    case(SIGTERM):
+      // Fall-through
+    case(SIGINT):
+      fatal_signal_handler();
   }
-  if (signal == SIGTERM || signal == SIGINT) fatal_signal_handler();
 }
 
 /*
@@ -516,12 +521,22 @@ void fatal_error(char *message) {
   exit(EXIT_FAILURE);
 }
 
-/******************************* Main ***********************************/
+/******************************* Main Routines ***********************************/
 
 /*
 ** Starts listening for new connections, and handles incoming requests.
 */
-int main(int argc, char **argv) {
+int run_server() {
+
+  /*
+  // Stop if not running as root
+  printf("[%d]id\n", getuid());
+  if (getuid()) {
+    printf("%s", "This application requires escelated privileges. Please run as root.\n");
+    exit(EXIT_FAILURE);
+  }
+  */
+
   // Change current working directory to root of the application
   chdir(APP_ROOT);
 
@@ -532,7 +547,7 @@ int main(int argc, char **argv) {
   // Set up shared pipe
   pipe(fd);
 
-  // Set up alarm listener
+  // Set up signal handler
   if ((signal(SIGALRM, signal_handler) == SIG_ERR ||
        signal(SIGTERM, signal_handler) == SIG_ERR || 
        signal(SIGINT, signal_handler) == SIG_ERR)
@@ -583,4 +598,24 @@ int main(int argc, char **argv) {
   }
   
   // TODO: Cleanup {disconnect from db, free listen_queue_socket}
+}
+
+int module_results(char *module_num) {
+
+}
+
+int user_results(char *user) {
+
+}
+
+int main(int argc, char **argv) {
+  // TODO: Always require command line args
+  if (argc == 2) {
+    if (!strcmp(argv[1], RUN_SERVER)) return run_server();
+  } else if (argc == 3) {
+    if (!strcmp(argv[1], MODULE_RESULTS)) return module_results(argv[2]);
+    if (!strcmp(argv[1], USER_RESULTS)) return user_results(argv[2]);
+  }
+  printf("USAGE: %s MODE [ARGUMENT] \nMODES: %s, %s, %s\n", argv[0], RUN_SERVER, MODULE_RESULTS, USER_RESULTS);
+  return 0;
 }

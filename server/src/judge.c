@@ -215,8 +215,7 @@ int main(int argc, char **argv) {
   // Check arguments
   if (argc < 5) {
     printf(
-        "Usage: %s <judge id> <source file> <username> <module number> \
-			<pipe fd> [<input files>...]\n",
+        "USAGE: %s <judge id> <source file> <username> <module number> <pipe fd> [<input files>...]\n",
         argv[0]);
     exit(EXIT_FAILURE);
   }
@@ -280,3 +279,4 @@ int main(int argc, char **argv) {
   // Restore stdout and stderr and exit
   clean_and_exit(EXIT_SUCCESS);
 }
+
