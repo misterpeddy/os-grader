@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-w
+CFLAGS=-w -std=c99
 LIBS=-pthread -lsqlite3
 DEBUG=-ggdb
 BIN=bin/
