@@ -134,6 +134,7 @@ int init_modules(Module **modules) {
 */
 destruct_module(Module *module) {
   int i=0;
+  if(!module->num_input_files) return;
   for (; i<module->num_input_files; i++) {   
     free(module->input_files[i]);
   }
@@ -148,7 +149,7 @@ destruct_module(Module *module) {
 destruct_modules(Module **modules) {
   int i=0, j=0;
   for (; i<NUM_REGISTERED_MODULES; i++) {
-    destruct_module(modules[i]);
+    if (modules[i]) destruct_module(modules[i]);
   }
 }
 
