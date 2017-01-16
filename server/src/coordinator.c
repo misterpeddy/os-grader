@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "macros.h"
@@ -13,7 +14,10 @@
 #include "db.h"
 
 int fd[2];
+int listen_queue_socket;
 sqlite3 *db;
+
+Module registered_modules[NUM_REGISTERED_MODULES];
 
 long id_incrementor = 0;
 pthread_mutex_t inc_lock;
@@ -29,7 +33,7 @@ pthread_mutex_t judge_lock;
 ** OUTFILE_PREFIX. Returns 0 otherwise.
 */
 char is_input_file (char *filename) {
-  if (!strcmp(filename, ".") || !(filename, "..")) return 0;
+  if (!strcmp(filename, ".") || !strcmp(filename, "..")) return 0;
   if (strlen(filename) <= strlen(OUTFILE_PREFIX)) return 1;
   int i=0;
   for (; i<strlen(OUTFILE_PREFIX); i++) {
@@ -79,6 +83,7 @@ void init_module(Module *module, struct dirent *module_entry) {
   
   // Allocate space for the input file paths
   module->input_files = (char **) malloc(num_files * sizeof(char *));
+  memset(module->input_files, 0, num_files*sizeof(char *));
   
   // Reset the directory cursor
   closedir(module_dir);
@@ -89,10 +94,13 @@ void init_module(Module *module, struct dirent *module_entry) {
   while ((ent = readdir(module_dir)) != NULL) {
     if (is_input_file(ent->d_name)) {
           module->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
+          memset(module->input_files[file_counter], 0, MAX_FILENAME_LEN);
           strcpy(module->input_files[file_counter], ent->d_name);
           file_counter++; 
     }
   }
+
+  closedir(module_dir);
 }
 
 /*
@@ -114,6 +122,10 @@ int init_modules(Module **modules) {
       init_module(modules[mod_count++], ent);
     }
   }
+
+  closedir(dir);
+
+  if (VERBOSE) print_modules(&modules);
 }
 
 /*
@@ -125,6 +137,7 @@ destruct_module(Module *module) {
   for (; i<module->num_input_files; i++) {   
     free(module->input_files[i]);
   }
+  free(module->input_files);
   free(module);
 }
 
@@ -137,7 +150,6 @@ destruct_modules(Module **modules) {
   for (; i<NUM_REGISTERED_MODULES; i++) {
     destruct_module(modules[i]);
   }
-  free(modules);
 }
 
 Module *find_module(Module **modules, char *module_num) { 
@@ -145,6 +157,16 @@ Module *find_module(Module **modules, char *module_num) {
     if (!strcmp(modules[i]->number, module_num)) return modules[i];
   }
   return NULL;
+}
+
+void print_modules(Module **modules) {
+  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+    printf("%d - Module [%s] - {", i, modules[i]->number);
+      for (int j=0; j<modules[i]->num_input_files; j++) {
+        printf ("<%s>", modules[i]->input_files[j]);
+      }
+    printf("}\n");
+  }
 }
 
 /************************ Judge Routines ****************************/
@@ -182,9 +204,9 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
   judge->num_input_files = module->num_input_files;
 
   // Capture input files path
-  judge->input_files = (char **)malloc(judge->num_input_files);
+  judge->input_files = (char **)malloc(judge->num_input_files * sizeof(char *));
   for (int i=0; i< judge->num_input_files; i++) {
-    judge->input_files[i] = (char *)malloc(strlen(module->input_files[i]));
+    judge->input_files[i] = (char *)malloc(strlen(module->input_files[i]) + 1);
     strcpy(judge->input_files[i], module->input_files[i]);
   }
 
@@ -196,8 +218,8 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
   judge->exec_args[k++] = &judge->user;
   judge->exec_args[k++] = &judge->module_num;
   judge->exec_args[k++] = judge->fd_w;
-  judge->exec_args[k++] = judge->input_files[0];
-  judge->exec_args[k++] = judge->input_files[1];
+  for (int i=0; i<judge->num_input_files; i++)
+    judge->exec_args[k++] = judge->input_files[i];
   judge->exec_args[k++] = NULL;
 
   // Set environment variables
@@ -254,6 +276,7 @@ Judge *get_judge(char *id_str) {
 ** Also removes the entry from the active_judges list
 */
 void destruct_judge(Judge *judge) {
+  
   // Free all input file paths
   for (int i = 0; i < judge->num_input_files; i++) {
     free(judge->input_files[i]);
@@ -316,12 +339,12 @@ int validate_request(Request *request) {
 ** Handler for incoming requests
 ** Creates a Judge struct with relevant info and forks off the process.
 */
-void handle_request(Request *request, Module **modules) {
+void handle_request(Request *request) {
   Judge *judge = (Judge *)malloc(sizeof(Judge));
 
   if (validate_request(request)) return;
 
-  if (init_judge(judge, request, modules)) {
+  if (init_judge(judge, request, &registered_modules)) {
     send_message(request->socket_fd, UNK_ERR);
     return;
   }
@@ -366,6 +389,7 @@ void listen_to_judges() {
     bytes_read = 0;
     memset(message, 0, MAX_PACKET_SIZE);
     bytes_received = read(pipe_in, message, MAX_PACKET_SIZE);
+    if (VERBOSE) printf("Received [%s]\n", message);
 
     while (bytes_received > bytes_read) {
       // Set up to parse message
@@ -376,10 +400,11 @@ void listen_to_judges() {
       judge_id = strtok_r(NULL, DELIM, &token_state);
       ack_code = strtok_r(NULL, DELIM, &token_state);
 
-      bytes_read += atoi(size);
-      message = message + bytes_read;
+      if (VERBOSE) printf("Read bytes (%d-%d)/%d from judge (%s): %s \n", bytes_read, bytes_read + atoi(size),
+          bytes_received, judge_id, ack_code);
 
-      if (VERBOSE) printf("Received %d bytes from judge (%s): %s \n", bytes_received, judge_id, ack_code);
+      bytes_read += atoi(size);
+      message = message + atoi(size);
 
       // Find out which judge sent the response
       Judge *judge = get_judge(judge_id);
@@ -409,16 +434,21 @@ void signal_handler(int signal) {
     case(SIGTERM):
       // Fall-through
     case(SIGINT):
-      fatal_signal_handler();
+      fatal_event_handler();
   }
 }
 
 /*
-** Handler for signals of type SIGTERM or SIGINT.
+** Handler for fatal events.
+** A fatal even could be a fatal signal (SIGTERM or SIGINT) or some bad input being received.
 ** Frees up system resources
 */
-void fatal_signal_handler(int signal) {
+void fatal_event_handler() {
   // TODO: Free resources that will live after process is destroyed.
+  // TODO: Cancel all worker threads (judge and pipe_listener)
+  if (registered_modules) destruct_modules(&registered_modules);
+  if (db) close_db(db);
+  if (listen_queue_socket) close(listen_queue_socket);
   exit(EXIT_FAILURE);
 }
 
@@ -461,7 +491,7 @@ void alarm_handler(int signal) {
 
         // Kill the judge process
         kill(judge_pid, SIGKILL);
-        wait(judge_pid);
+        waitpid(judge_pid, NULL, NULL);
       }
     }
   }
@@ -477,7 +507,7 @@ void act_on_ack(Judge *judge, char *ack_code) {
   // Echo ack to the client
   send_message(judge->socket_fd, ack_code);
 
-  // Don't do anything for non-fatal acks
+  // Don't do anything else for non-fatal acks
   if (strcmp(ack_code, &JDG_AOK) && strcmp(ack_code, &CMP_ERR) &&
       strcmp(ack_code, &RUN_ERR) && strcmp(ack_code, &CHK_ERR)) 
     return;
@@ -506,7 +536,7 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
   // Close socket connection, wait on judge process, and destruct judge
   close_connection(judge->socket_fd);
-  wait(judge->pid);
+  waitpid(judge->pid, NULL, NULL);
   destruct_judge(judge);
 }
 
@@ -516,9 +546,15 @@ void init_request(Request *request) {
   request->filename = (char *)malloc(MAX_FILENAME_LEN);
 }
 
+void destruct_request(Request *request) {
+  free(request->user);
+  free(request->module_num);
+  free(request->filename);
+}
+
 void fatal_error(char *message) {
   printf("Fatal: %s\n", message);
-  exit(EXIT_FAILURE);
+  fatal_event_handler();
 }
 
 /******************************* Main Routines ***********************************/
@@ -538,11 +574,13 @@ int run_server() {
   */
 
   // Change current working directory to root of the application
+  struct stat root_stat; 
+  if ((stat(APP_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("Provide valid APP_ROOT in settings");
   chdir(APP_ROOT);
 
   // Initialize modules
-  Module modules[NUM_REGISTERED_MODULES];
-  init_modules(&modules);
+  init_modules(&registered_modules);
 
   // Set up shared pipe
   pipe(fd);
@@ -572,11 +610,10 @@ int run_server() {
     fatal_error("Could not initiazlie mutex lock");
 
   // Set up initial socket for listen queue
-  int listen_queue_socket = set_up_server();
+  listen_queue_socket = set_up_server();
 
   // Init and allocate enough space to hold the raw request
   Request request;
-  init_request(&request);
 
   int connection_socket;
   if (DEBUG) printf("Listening for connections on port %d...\n", PORT);
@@ -592,9 +629,10 @@ int run_server() {
 
     // Let the handler receive request data
     // TODO: Move this to a new thread to handle concurrent requests
+    init_request(&request);
     receive_request(&request);
-
-    handle_request(&request, &modules);
+    handle_request(&request);
+    destruct_request(&request);
   }
   
   // TODO: Cleanup {disconnect from db, free listen_queue_socket}

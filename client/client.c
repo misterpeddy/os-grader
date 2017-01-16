@@ -60,9 +60,9 @@ int handle_ack(char *ack) {
     } else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
         printf(KRED "Could not compile file using gcc\n" KYEL);
     } else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
-        printf(KGRN "Succesfully ran executable against input file\n" KYEL);
+        printf(KGRN "Succesfully ran executable with input file\n" KYEL);
     } else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
-        printf(KRED "There was a runtime error while running against input file\n" KYEL);
+        printf(KRED "There was a runtime error while running with input file\n" KYEL);
     } else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
         printf(KGRN "Succesfully passed a test case\n" KYEL);
     } else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
