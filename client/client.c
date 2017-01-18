@@ -39,51 +39,49 @@ int connect_to_server(char *server, int PORT, char *error) {
 }
 
 /*
-** If ack is an ack_code, echos its meaning, otherwise echos 
+** If ack is an ack_code, echos its message, otherwise echos 
 ** the content of the message.
 ** Returns an AckResult enum member
 */
 int handle_ack(char *ack) {
 	if (!strncmp(ack, REQ_AOK, strlen(REQ_AOK))) {
-			printf(KGRN "Server succesfully received file\n" KYEL);
+			printf(REQ_AOK_MSG);
 	} else if (!strncmp(ack, INV_USR, strlen(INV_USR))){
-			printf(KRED "Invalid username\n" KYEL);
+			printf(INV_USR_MSG);
 			return 1;
 	} else if (!strncmp(ack, INV_MOD, strlen(INV_MOD))){
-			printf(KRED "Invalid module number\n" KYEL);
+			printf(INV_MOD_MSG);
 			return 1;
 	} else if (!strncmp(ack, UNK_ERR, strlen(UNK_ERR))){
-			printf(KRED "Unknown error occured while processing request. "
-					"Please make sure you have complied with assignment requirements.\n" KYEL);
+			printf(UNK_ERR_MSG);
+			return 1;
+	} else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
+			printf(CHK_ERR_MSG);
+			return 1;
+	} else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
+			printf(TIM_OUT_MSG);
 			return 1;
 	} else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
-			printf(KGRN "Succesfully compiled file\n" KYEL);
+			printf(CMP_AOK_MSG);
 	} else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
-			printf(KRED "Could not compile file using gcc\n" KYEL);
+			printf(CMP_ERR_MSG);
 	} else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
-			printf(KGRN "Succesfully ran executable with input file\n" KYEL);
+			printf(RUN_AOK_MSG);
 	} else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
-			printf(KRED "There was a runtime error while running with input file\n" KYEL);
+			printf(RUN_ERR_MSG);
+	} else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
+			printf(CHK_AOK_MSG);
+	} else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
+			printf(JDG_AOK_MSG);
+	} else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
+			printf(JDG_ERR_MSG);
+	} else if (!strncmp(ack, BEG_FIL, strlen(BEG_FIL))) {
+			printf(BEG_FIL_MSG);
 	} else if (!strncmp(ack, BEG_SOL, strlen(BEG_SOL))){
 			return RECEIVE_SOLUTION;
-	} else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
-			printf(KGRN "Succesfully passed a test case\n" KYEL);
-	} else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
-			printf(KRED "Did not pass a test case\n" KYEL);
-			return 1;
-	} else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
-			printf(KGRN "Your submission was accepted - great job!\n" KYEL);
-	} else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
-			printf(KRED "Your submission was not accepted.\n" KYEL);
-	} else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
-			printf(KRED "Submitted program timed out\n" KYEL);
-			return 1;
-	} else if (!strncmp(ack, BEG_FIL, strlen(BEG_FIL))) {
-			printf(KYEL "Following message was received from server:\n" KYEL);
 	} else {
 			printf("%s%s%s", KNRM, ack, KYEL);
 	}
-
 	return NO_ACTION;
 }
 
@@ -233,7 +231,7 @@ int send_request(int socket_fd, char *lfile, char *user, char *module_num) {
     remaining -= buff_size;
   }
 
-  printf("Finished sending file content\nWaiting for confirmation from server...\n");
+  printf("Finished sending file content\nWaiting for feedback from server...\n");
 
   char read_buffer[TCP_PACKET_SIZE];
 

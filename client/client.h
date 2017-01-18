@@ -8,7 +8,7 @@
 
 #define VERBOSE 1
 
-#define server_address   "104.199.193.162"
+//#define server_address   "104.199.193.162"
 #define server_address   "localhost"
 #define port_number       31337
 
@@ -27,7 +27,7 @@
 
 #define ACK_LEN 7 
 
-/* Acknowledgment messages */
+/* Acknowledgment Codes */
 #define CMP_AOK   "CMP_AOK" /* Compilation succeeded            */
 #define CMP_ERR   "CMP_ERR" /* Compilation failed         FATAL */
 #define RUN_AOK   "RUN_AOK" /* A run succeeded                  */
@@ -50,9 +50,27 @@
 #define BEG_FIL   "BEG_FIL" /* About to stream file             */
 #define BEG_SOL   "BEG_SOL" /* About to stream solution         */
 
-/* Acknowledgement Interpretations */
-// TODO: fill out
-
+/* Acknowledgement Messages */
+#define REQ_AOK_MSG KGRN "Server succesfully received file\n" KYEL
+#define INV_USR_MSG KRED "Invalid username\n" KYEL
+#define INV_MOD_MSG KRED "Invalid module number\n" KYEL
+#define CMP_AOK_MSG KGRN "Succesfully compiled file\n" KYEL 
+#define CMP_ERR_MSG KRED "Could not compile file using gcc\n" KYEL
+#define RUN_AOK_MSG KGRN "Succesfully ran executable with input file\n" KYEL
+#define RUN_ERR_MSG KRED "There was a runtime error while running with input file\n" KYEL 
+#define CHK_AOK_MSG KGRN "Succesfully passed a test case\n" KYEL
+#define CHK_ERR_MSG KRED "Did not pass a test case\n" KYEL
+#define JDG_AOK_MSG KGRN "Your submission was accepted - great job!\n" KYEL
+#define JDG_ERR_MSG KRED "Your submission was not accepted.\n" KYEL
+#define TIM_OUT_MSG KRED "Submitted program timed out\n" KYEL
+#define BEG_FIL_MSG KYEL "Following message was received from server:\n" KYEL
+#define UNK_ERR_MSG KRED "Unknown error occured while processing request.\nPlease make sure you have complied with assignment requirements.\n" KYEL   
+  
+/*
+** Indicates the state of the connection.
+** Each ack can 1) not change it 2) terminate it or 
+** 3) send the client into file receiving mode
+*/
 typedef enum {
   NO_ACTION,
   TERMINATE,
