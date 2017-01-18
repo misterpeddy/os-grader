@@ -563,7 +563,14 @@ void destruct_request(Request *request) {
   free(request->filename);
 }
 
-void fatal_error(char *message) {
+void fatal_error(char *format, ...) {
+  char message[MAX_COMMAND_LEN];
+
+  va_list args_list;
+  va_start(args_list, format);
+  vsprintf(message, format, args_list);
+  va_end(args_list);
+
   printf("Fatal: %s\n", message);
   fatal_event_handler();
 }
@@ -587,7 +594,12 @@ int run_server() {
   // Change current working directory to root of the application
   struct stat root_stat; 
   if ((stat(APP_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
-    fatal_error("Provide valid APP_ROOT in settings");
+    fatal_error("APP_ROOT [%s] not a valid directory. Please change in settings.", APP_ROOT);
+  if ((stat(MODULES_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("MODULES_ROOT [%s] not a valid directory. Please change in settings.", MODULES_ROOT);
+  if ((stat(BIN_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("BIN_ROOT [%s] not a valid directory. Please change in settings." BIN_ROOT);
+
   chdir(APP_ROOT);
 
   // Initialize modules
@@ -605,8 +617,7 @@ int run_server() {
 
   // Open connection to the database
   if (open_db(&db, DB_PATH))
-    //fatal_error("Can't open database: %s\n", sqlite3_errmsg(*db));
-    fatal_error("Can't open database");
+    fatal_error("Can't open database: %s\n", sqlite3_errmsg(db));
 
   // Create a submissions table if it does not already exist
   create_table(db);
@@ -639,32 +650,58 @@ int run_server() {
     request.socket_fd = connection_socket;
 
     // Let the handler receive request data
-    // TODO: Move this to a new thread to handle concurrent requests
     init_request(&request);
     receive_request(&request);
+    
+    // TODO: Move this to a new thread to handle concurrent requests
     handle_request(&request);
     destruct_request(&request);
   }
-  
-  // TODO: Cleanup {disconnect from db, free listen_queue_socket}
 }
 
+/*
+ * Looks up and reports all records for specified module
+ */
 int module_results(char *module_num) {
+  // Open connection to the database
+  if (open_db(&db, DB_PATH))
+    fatal_error("Can't open database: %s\n", sqlite3_errmsg(db));
+   
+  char response_buffer[MAX_DB_RESULT_LEN];
 
+  if (lookup_module(db, module_num, response_buffer))
+    fatal_error("Can't look up module: %s\n", sqlite3_errmsg(db));
+
+  if (!*response_buffer) printf("No records were found for module %s\n", module_num);
+  else printf("%s", response_buffer);
 }
 
+/*
+ * Looks up and reports all records for specified user
+ */
 int user_results(char *user) {
+  // Open connection to the database
+  if (open_db(&db, DB_PATH))
+    fatal_error("Can't open database: %s\n", sqlite3_errmsg(db));
 
+  char response_buffer[MAX_DB_RESULT_LEN];
+
+  if (lookup_user(db, user, response_buffer))
+    fatal_error("Can't look up user: %s\n", sqlite3_errmsg(db));
+
+  if (!*response_buffer) printf("No records were found for user %s\n", user);
+  else printf("%s", response_buffer);
 }
 
 int main(int argc, char **argv) {
-  // TODO: Always require command line args
-  if (argc == 2) {
-    if (!strcmp(argv[1], RUN_SERVER)) return run_server();
-  } else if (argc == 3) {
-    if (!strcmp(argv[1], MODULE_RESULTS)) return module_results(argv[2]);
-    if (!strcmp(argv[1], USER_RESULTS)) return user_results(argv[2]);
-  }
-  printf("USAGE: %s MODE [ARGUMENT] \nMODES: %s, %s, %s\n", argv[0], RUN_SERVER, MODULE_RESULTS, USER_RESULTS);
+  if (!strcmp(argv[1], RUN_SERVER) && argc == 2) 
+    return run_server();
+  if(!strcmp(argv[1], MODULE_RESULTS) && argc == 3) 
+    return module_results(argv[2]);
+  if (!strcmp(argv[1], USER_RESULTS) && argc == 3) 
+    return user_results(argv[2]);
+
+  printf("USAGE: %s MODE [ARGUMENT] \nMODES: %s, %s, %s\n"
+      , argv[0], RUN_SERVER, MODULE_RESULTS, USER_RESULTS);
   return 0;
 }

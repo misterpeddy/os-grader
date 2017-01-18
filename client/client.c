@@ -2,20 +2,21 @@
 
 /*
 ** Establishes a TCP connection to server on specified port
-** Returns file descriptor for socket or -1 for error
+** Returns file descriptor for socket or -1 for error and writes error 
+** error description in the error buffer.
 */
-int connect_to_server(char *server, int PORT) {
+int connect_to_server(char *server, int PORT, char *error) {
   // Interpret server address
   struct hostent *host_info = gethostbyname(server);
   if (host_info == NULL) {
-    printf("Could not look up server address - Exiting\n");
+    sprintf(error, "Could not look up server address");
     return -1;
   }
 
   // Create socket to connect to the server
   int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
-    printf("Failed obtaining a socket file descriptor\n");
+    sprintf(error, "Failed obtaining a socket file descriptor");
     return -1;
   }
 
@@ -29,7 +30,7 @@ int connect_to_server(char *server, int PORT) {
   // Try to connect to the server
   if (connect(socket_fd, (struct sockaddr *)&server_address,
               sizeof(server_address)) < 0) {
-    printf("Cannot connect to server\n");
+    sprintf(error, "Cannot connect to server");
     return -1;
   }
   printf("Succesfully connected to the server\n");
@@ -179,6 +180,7 @@ int main(int argc, char **argv) {
   printf(KYEL);
 
   // Set request parameters
+  //const char *server_address = "104.199.193.162";
   const char *server_address = "localhost";
   const int port_number = 31337;
   const char *file_to_send = argv[3];
@@ -186,10 +188,11 @@ int main(int argc, char **argv) {
   const char *module_num = argv[2];
 
   // Establish a TCP connection to the server
-  int socket_fd = connect_to_server(server_address, port_number);
+  char error_message[MAX_ERROR_SIZE];
+  int socket_fd = connect_to_server(server_address, port_number, error_message);
  
   if (socket_fd  < 0) {
-    fatal_error("Could not create socket connection");
+    fatal_error(error_message);
   }
 
   // Send the request and echo results

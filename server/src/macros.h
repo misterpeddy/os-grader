@@ -23,6 +23,7 @@
 /* Coordinator macros */
 #define MAX_INPUT_FILES 16
 #define MAX_NUM_THREADS 16
+#define MAX_DB_RESULT_LEN 1<<20
 #define MILLI 1000000
 #define MIN_USER_LEN 3
 

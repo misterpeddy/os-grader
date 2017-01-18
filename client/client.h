@@ -8,6 +8,7 @@
 #define ARG_DELIM ":"
 #define HEADER_PREFIX "FBEGIN"
 #define TCP_PACKET_SIZE 4096
+#define MAX_ERROR_SIZE 1024
 
 #define KNRM  "\x1B[00m"
 #define KRED  "\x1B[31m"
@@ -36,9 +37,10 @@
 
 /*
 ** Establishes a TCP connection to server on specified port
-** Returns file descriptor for socket or -1 for error
+** Returns file descriptor for socket or -1 for error and writes error 
+** error description in the error buffer.
 */
-int connect_to_server(char *server, int PORT);
+int connect_to_server(char *server, int PORT, char *error);
 
 /*
 ** If ack is an ack_code, echos its meaning, otherwise echos 
