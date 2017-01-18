@@ -152,6 +152,9 @@ int receive_request(Request *request) {
     strcpy(&filepath[strlen(TEMP)], "/");
     strcpy(&filepath[strlen(TEMP) + 1], request->filename);
 
+    // Create TEMP if it does not exist
+    if (access(TEMP, F_OK) == -1) system("mkdir "TEMP);
+
     if (VERBOSE) printf("Retreived and parsed header: <%s><%s><%d>\n", 
       request->user, request->module_num, bytes_remaining);
 

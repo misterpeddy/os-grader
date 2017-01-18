@@ -38,8 +38,8 @@ static int record_retrieval_callback(void *passed_buffer, int argc, char **argv,
 ** Returns 1 if an error occured, 0 otherwise.
 */
 int open_db(sqlite3 **db, char *db_path) {
-
-  // Open connection and heck return code for errors
+  
+  // Open connection and check return code for errors
 	if(sqlite3_open(db_path, db)) return 1;
 
   if (DEBUG) printf("Successfully connected to the database\n");

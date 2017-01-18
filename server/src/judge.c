@@ -19,7 +19,8 @@ char diff_file[MAX_FILENAME_LEN];
 ** reroutes the stdout and stderr of the process to log_file and err_file
 */
 void init_sandbox(char *user, char *module_num) {
-  // Change current working directory to the submissions folder
+  // Create SUB directory if it doesn't exist and chdir into it
+  if (access(SUB, F_OK) == -1) system("mkdir "SUB);
   chdir(SUB);
 
   // Create user directory if does not exist already
