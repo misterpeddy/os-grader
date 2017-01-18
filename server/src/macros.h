@@ -5,7 +5,7 @@
 
 /* Shared macros */
 #define DEBUG 1
-#define VERBOSE 0
+#define VERBOSE 1
 #define DELIM "*"
 #define MAX_FILENAME_LEN 128
 #define MAX_COMMAND_LEN 512

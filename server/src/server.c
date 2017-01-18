@@ -29,14 +29,15 @@ char *generate_filename(char *newfile, char *user, char *module_num) {
   int k=0;
   
   // Add username
-  for (int i=0;i<strlen(user);) { 
+  int i;
+  for (i=0;i<strlen(user);) { 
     newfile[k++] = user[i++];
   }
 
   newfile[k++] = '_';
 
   // Add module number
-  for (int i=0; i<strlen(module_num);) {
+  for (i=0; i<strlen(module_num);) {
     newfile[k++] = module_num[i++];
   }
 
@@ -145,26 +146,28 @@ int receive_request(Request *request) {
       return 1;
     }
 
-    if (VERBOSE) printf("Retreived and parsed header information\n");
-
     // Compute path of file to write
     char filepath[MAX_FILENAME_LEN];
     strcpy(&filepath, TEMP);
     strcpy(&filepath[strlen(TEMP)], "/");
     strcpy(&filepath[strlen(TEMP) + 1], request->filename);
 
+    if (VERBOSE) printf("Retreived and parsed header: <%s><%s><%d>\n", 
+      request->user, request->module_num, bytes_remaining);
+
     // Open file to write to and
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
 
     if (VERBOSE) printf("Opened file to write to\n");
 
+    int total_received=0;
     // Listen until file is received or no more packets are being sent
     while ((bytes_remaining > 0) && 
         ((bytes_received = recv(connection_socket, receive_buffer, TCP_PACKET_SIZE, 0)) > 0)) {
 
       // Write the received packet of data to the file
       write(file_to_write, receive_buffer, bytes_received);
-
+      total_received += bytes_received;
       bytes_remaining -= bytes_received;
     }
 
@@ -172,7 +175,7 @@ int receive_request(Request *request) {
     if (!bytes_remaining) {
       if (VERBOSE) printf("Succesfully retrieved file\n\n");
     } else {
-      printf("Warning - Expected %d bytes, received %d bytes\n\n");
+      printf("Warning - Expected %d bytes, received %d bytes\n\n", atoi(header_tokens[3]), total_received);
     }
 
     close(file_to_write);

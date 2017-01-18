@@ -234,9 +234,10 @@ int main(int argc, char **argv) {
   init_sandbox(user, module_num);
 
   // Log arguments
+  int i;
   if (DEBUG) {
     printf("%sArgs: ", FILLER);
-    for (int i = 0; i < argc; i++) printf("<%s>", argv[i]);
+    for (i = 0; i < argc; i++) printf("<%s>", argv[i]);
     printf("%s\n", FILLER);
   }
 
@@ -252,7 +253,7 @@ int main(int argc, char **argv) {
     send_ack(pipe_fd, CMP_AOK, judge_id);
   }
 
-  for (int i = 0; i < num_input_files; i++) {
+  for (i = 0; i < num_input_files; i++) {
     // Run and exit if errored
     if (run_program(user, module_num, input_files[i])) {
       if (DEBUG) printf("%sRun #%d failed - Exiting%s\n\n", FILLER, i, FILLER);

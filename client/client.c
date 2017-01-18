@@ -161,6 +161,12 @@ int send_request(int socket_fd, char *lfile, char *user, char *module_num) {
   return 0;
 }
 
+void fatal_error(char *message) {
+    if (message) printf("fatal: %s\n", message);
+    printf(KNRM);
+    exit(EXIT_FAILURE);
+}
+
 int main(int argc, char **argv) {
 
   // Make sure we got the right number of arguments
@@ -183,17 +189,19 @@ int main(int argc, char **argv) {
   int socket_fd = connect_to_server(server_address, port_number);
  
   if (socket_fd  < 0) {
-    exit(EXIT_FAILURE);
+    fatal_error("Could not create socket connection");
   }
 
   // Send the request and echo results
   if (send_request(socket_fd, file_to_send, user, module_num)) {
     close(socket_fd);
-    exit(EXIT_FAILURE);
+    fatal_error(NULL);
   }
 
   // Close connection
   close(socket_fd);
+
+  printf(KNRM);
 
   return 0;
 }

@@ -46,7 +46,8 @@ char is_input_file (char *filename) {
 ** Returns 1 if module_name is a registered module, 0 otherwise.
 */
 char is_registered(char *module_name) {
-  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+  int i;
+  for (i=0; i<NUM_REGISTERED_MODULES; i++) {
     if (!strcmp(module_name, REGISTERED_MODULES[i])) return 1;
   }
   return 0;
@@ -125,7 +126,7 @@ int init_modules(Module **modules) {
 
   closedir(dir);
 
-  if (VERBOSE) print_modules(&modules);
+  if (VERBOSE) print_modules(modules);
 }
 
 /*
@@ -154,16 +155,18 @@ destruct_modules(Module **modules) {
 }
 
 Module *find_module(Module **modules, char *module_num) { 
-  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+  int i;
+  for (i=0; i<NUM_REGISTERED_MODULES; i++) {
     if (!strcmp(modules[i]->number, module_num)) return modules[i];
   }
   return NULL;
 }
 
 void print_modules(Module **modules) {
-  for (int i=0; i<NUM_REGISTERED_MODULES; i++) {
+  int i, j;
+  for (i=0; i<NUM_REGISTERED_MODULES; i++) {
     printf("%d - Module [%s] - {", i, modules[i]->number);
-      for (int j=0; j<modules[i]->num_input_files; j++) {
+      for (j=0; j<modules[i]->num_input_files; j++) {
         printf ("<%s>", modules[i]->input_files[j]);
       }
     printf("}\n");
@@ -206,7 +209,8 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
 
   // Capture input files path
   judge->input_files = (char **)malloc(judge->num_input_files * sizeof(char *));
-  for (int i=0; i< judge->num_input_files; i++) {
+  int i;
+  for (i=0; i< judge->num_input_files; i++) {
     judge->input_files[i] = (char *)malloc(strlen(module->input_files[i]) + 1);
     strcpy(judge->input_files[i], module->input_files[i]);
   }
@@ -219,7 +223,7 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
   judge->exec_args[k++] = &judge->user;
   judge->exec_args[k++] = &judge->module_num;
   judge->exec_args[k++] = judge->fd_w;
-  for (int i=0; i<judge->num_input_files; i++)
+  for (i=0; i<judge->num_input_files; i++)
     judge->exec_args[k++] = judge->input_files[i];
   judge->exec_args[k++] = NULL;
 
@@ -265,7 +269,8 @@ int add_judge(Judge *judge) {
 ** Finds judge with id_str judge id from active_judges
 */
 Judge *get_judge(char *id_str) {
-  for (int i = 0; i < MAX_JUDGES; i++) {
+  int i;
+  for (i = 0; i < MAX_JUDGES; i++) {
     if (active_judges[i] && !strcmp(active_judges[i]->id, id_str))
       return active_judges[i];
   }
@@ -279,7 +284,8 @@ Judge *get_judge(char *id_str) {
 void destruct_judge(Judge *judge) {
   
   // Free all input file paths
-  for (int i = 0; i < judge->num_input_files; i++) {
+  int i;
+  for (i = 0; i < judge->num_input_files; i++) {
     free(judge->input_files[i]);
   }
 
@@ -290,7 +296,7 @@ void destruct_judge(Judge *judge) {
   free(judge->source_path);
 
   // Remove from active judges
-  for (int i = 0; i < MAX_JUDGES; i++) {
+  for (i = 0; i < MAX_JUDGES; i++) {
     if (active_judges[i] && !strcmp(active_judges[i]->id, judge->id))
       active_judges[i] = NULL;
   }
@@ -383,18 +389,21 @@ void handle_request(Request *request) {
 */
 void listen_to_judges() {
   int bytes_received, bytes_read, pipe_in = fd[0];
-  char *message_content[MAX_PACKET_SIZE];
+  char message_content[MAX_PACKET_SIZE];
   char *message = &message_content;
+
+  // Set up to parse message
+  char *size=0, *judge_id=0, *ack_code=0, *token_state=0;
+
   while (1) {
     // Block until receive an ack to process
     bytes_read = 0;
+    message = &message_content; 
     memset(message, 0, MAX_PACKET_SIZE);
     bytes_received = read(pipe_in, message, MAX_PACKET_SIZE);
     if (VERBOSE) printf("Received [%s]\n", message);
 
     while (bytes_received > bytes_read) {
-      // Set up to parse message
-      char *size, *judge_id, *ack_code, *token_state;
 
       // Parse the message
       size = strtok_r(message, DELIM, &token_state);
@@ -466,7 +475,8 @@ void alarm_handler(int signal) {
   Judge *judge;
 
   // Find processes that have max'd out their time limitation
-  for (int i = 0; i < MAX_JUDGES; i++) {
+  int i;
+  for (i = 0; i < MAX_JUDGES; i++) {
     if (active_judges[i]) {
       judge = active_judges[i];
       start = judge->time_struct;
