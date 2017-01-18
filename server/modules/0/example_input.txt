@@ -1,0 +1,5 @@
+word1
+hello
+interesting
+d
+exit

@@ -4,15 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+
+#define VERBOSE 1
 
 #define server_address   "104.199.193.162"
 #define server_address   "localhost"
 #define port_number       31337
 
+#define SOL_SUFFIX       "solution.c"
 #define ARG_DELIM        ":"
 #define HEADER_PREFIX    "FBEGIN"
-#define TCP_PACKET_SIZE   4096
+#define TCP_PACKET_SIZE   512
 #define MAX_ERROR_SIZE    1024
+#define MAX_FILENAME_LEN  128
+#define MAX_HEADER_ELEMS  8
 
 #define KNRM             "\x1B[00m"
 #define KRED             "\x1B[31m"
@@ -31,13 +37,27 @@
 #define CHK_ERR   "CHK_ERR" /* A diff failed              FATAL */
 
 #define JDG_ERR   "JDG_ERR" /* Solution not accepted      FATAL */
-#define JDG_AOK   "JDG_AOK" /* Solution accepted          FATAL */
+#define JDG_AOK   "JDG_AOK" /* Solution accepted                */
 
-#define RCV_AOK   "RCV_AOK" /* Client request received          */
+#define REQ_AOK   "REQ_AOK" /* Client request received          */
+#define FIL_AOK		"FIL_AOK"	/* File received OK									*/
+#define FIL_ERR		"FIL_ERR"	/* File received with error					*/
+#define HDR_AOK		"HDR_AOK"	/* Header received OK								*/
+
 #define INV_USR   "INV_USR" /* Invalid username           FATAL */
 #define INV_MOD   "INV_MOD" /* Invalid module number      FATAL */
 #define UNK_ERR   "UNK_ERR" /* Unknown error              FATAL */
 #define BEG_FIL   "BEG_FIL" /* About to stream file             */
+#define BEG_SOL   "BEG_SOL" /* About to stream solution         */
+
+/* Acknowledgement Interpretations */
+// TODO: fill out
+
+typedef enum {
+  NO_ACTION,
+  TERMINATE,
+  RECEIVE_SOLUTION
+} AckResult;
 
 /*
 ** Establishes a TCP connection to server on specified port
@@ -49,7 +69,7 @@ int connect_to_server(char *server, int PORT, char *error);
 /*
 ** If ack is an ack_code, echos its meaning, otherwise echos 
 ** the content of the message.
-** Returns 1 if no more messages will be received
+** Returns an AckResult enum member
 */
 int handle_ack(char *ack);
 
@@ -62,3 +82,8 @@ int handle_ack(char *ack);
 */
 int send_request(int socket_fd, char *lfile, char *user, char *module_num); 
 
+/*
+** Receives the solution to the current module from the server
+** Saves the file in the current directory
+*/
+void receive_solution(int socket_fd);

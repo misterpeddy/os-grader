@@ -158,6 +158,9 @@ int receive_request(Request *request) {
     if (VERBOSE) printf("Retreived and parsed header: <%s><%s><%d>\n", 
       request->user, request->module_num, bytes_remaining);
 
+    // Send header received ack
+    send(connection_socket, HDR_AOK, strlen(HDR_AOK), 0);
+
     // Open file to write to and
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
 
@@ -184,7 +187,7 @@ int receive_request(Request *request) {
     close(file_to_write);
 
     // Send ack to client
-    send(connection_socket, RCV_AOK, strlen(RCV_AOK), 0);
+    send(connection_socket, REQ_AOK, strlen(REQ_AOK), 0);
 
   } else {
     printf("Client dropped connection\n\n");
@@ -197,9 +200,65 @@ int receive_request(Request *request) {
 */
 int send_message(int socket_fd, char *message) {
   // send ack to client
-  send(socket_fd, message, strlen(message), 0);
+  int status = send(socket_fd, message, strlen(message), 0);
 }
   
+/*
+** Assumes socket_fd is a valid connection
+** Sends the solution for specifed module over the connection
+*/
+int send_solution(int socket_fd, char *module_num) {
+
+  // Compute solution file path
+  char sol_file[MAX_FILENAME_LEN];
+  sprintf(sol_file, "%s/%s/%s_%s%s", MODULES, module_num, SOLFILE_PREFIX,
+      module_num, SOLFILE_SUFFIX); 
+
+  // Open solution file
+  FILE *file;
+  if ((file = fopen(sol_file , "r")) < 1) {
+    printf("No solution file %s\n", sol_file);
+    return -1;
+  }
+
+  // Compute file size
+  struct stat sol_stat;
+  stat(sol_file, &sol_stat);
+  int bytes_remaining = sol_stat.st_size;
+
+  // Send begining of solution ack
+  send(socket_fd, BEG_SOL, strlen(BEG_SOL), 0);
+
+  // Send file header
+  char buffer[TCP_PACKET_SIZE];
+  memset(buffer, 0, TCP_PACKET_SIZE);
+  sprintf(buffer, "%s%s%s%s%d", HEADER_PREFIX, ARG_DELIM, module_num,
+      ARG_DELIM, bytes_remaining);
+  send(socket_fd, buffer, strlen(buffer), 0);
+
+  // Wait for header received ack
+  memset(buffer, 0, TCP_PACKET_SIZE);
+  recv(socket_fd, buffer, strlen(HDR_AOK), 0);
+  if (strcmp(buffer, HDR_AOK)) return 1;
+
+  // Send file content
+  int bytes_read;
+  while (bytes_remaining > 0) {
+    bytes_read = fread(buffer, sizeof(buffer[0]), TCP_PACKET_SIZE, file); 
+    send(socket_fd, buffer, bytes_read, 0);
+    bytes_remaining -= bytes_read;
+  }
+
+  fclose(file);
+
+  // Wait for ack from client
+  memset(buffer, 0, TCP_PACKET_SIZE);
+  recv(socket_fd, buffer, TCP_PACKET_SIZE, 0);
+  if (strcmp(buffer, FIL_AOK)) return 1;
+
+  return 0;
+}
+
 /*
 ** Sends the content of the file over the socket.
 */

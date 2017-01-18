@@ -7,6 +7,7 @@
 #define DEBUG 1
 #define VERBOSE 1
 #define DELIM "*"
+#define ARG_DELIM ":"
 #define MAX_FILENAME_LEN 128
 #define MAX_COMMAND_LEN 512
 #define MAX_PACKET_SIZE 512
@@ -31,14 +32,16 @@
 #define PORT 31337
 #define HEADER_PREFIX "FBEGIN"
 #define ARG_DELIM ":"
-#define TCP_PACKET_SIZE 4096
+#define TCP_PACKET_SIZE 512
 #define MAX_WAITING_CONNECTIONS 5
 
 /* Internal filename suffixes */
-#define LOGFILE_SUFFIX "log.txt"
-#define ERRORFILE_SUFFIX "error.txt"
-#define DIFF_SUFFIX "diff.txt"
-#define OUTFILE_PREFIX "out"
+#define LOGFILE_SUFFIX          "log.txt"
+#define ERRORFILE_SUFFIX        "error.txt"
+#define DIFF_SUFFIX             "diff.txt"
+#define OUTFILE_PREFIX          "out"
+#define SOLFILE_PREFIX          "solution"
+#define SOLFILE_SUFFIX          ".c"
 
 /* Internal directories */
 #define BIN "bin"
@@ -65,12 +68,15 @@
 #define JDG_ERR   "JDG_ERR" /* Solution not accepted      FATAL */
 #define JDG_AOK   "JDG_AOK" /* Solution accepted          FATAL */
 
-#define RCV_AOK   "RCV_AOK" /* Client request received          */
+#define REQ_AOK   "REQ_AOK" /* Client request received          */
+#define FIL_AOK   "FIL_AOK" /* File received OK                 */                            
+#define HDR_AOK   "HDR_AOK" /* Header received OK               */  
+
 #define INV_USR   "INV_USR" /* Invalid username           FATAL */
 #define INV_MOD   "INV_MOD" /* Invalid module number      FATAL */
 #define UNK_ERR   "UNK_ERR" /* Unknown error              FATAL */
 #define BEG_FIL   "BEG_FIL" /* About to stream file             */
-
+#define BEG_SOL   "BEG_SOL" /* About to stream solution         */
 
 typedef struct {
   char id[64];                  /* Unique identifier for each judge       */
