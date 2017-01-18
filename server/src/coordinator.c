@@ -17,7 +17,7 @@ int fd[2];
 int listen_queue_socket;
 sqlite3 *db;
 
-Module registered_modules[NUM_REGISTERED_MODULES];
+Module *modules[NUM_REGISTERED_MODULES];
 
 long id_incrementor = 0;
 pthread_mutex_t inc_lock;
@@ -122,7 +122,7 @@ void init_module(Module *module, struct dirent *module_entry) {
 ** Initializes the modules array by calling init_module for each registered
 ** module.
 */
-int init_modules(Module **modules) { 
+int init_modules() { 
   DIR *dir = opendir(MODULES_ROOT);
   struct dirent *ent;
   int mod_count=0;
@@ -140,7 +140,7 @@ int init_modules(Module **modules) {
 
   closedir(dir);
 
-  if (VERBOSE) print_modules(modules);
+  if (VERBOSE) print_modules();
 }
 
 /*
@@ -161,14 +161,14 @@ destruct_module(Module *module) {
 ** Destructs the modules array by calling destuct_module.
 ** TODO: Call it in fatal signal handler
 */
-destruct_modules(Module **modules) {
+destruct_modules() {
   int i=0, j=0;
   for (; i<NUM_REGISTERED_MODULES; i++) {
     if (modules[i]) destruct_module(modules[i]);
   }
 }
 
-Module *find_module(Module **modules, char *module_num) { 
+Module *find_module(char *module_num) { 
   int i;
   for (i=0; i<NUM_REGISTERED_MODULES; i++) {
     if (!strcmp(modules[i]->number, module_num)) return modules[i];
@@ -176,7 +176,7 @@ Module *find_module(Module **modules, char *module_num) {
   return NULL;
 }
 
-void print_modules(Module **modules) {
+void print_modules() {
   int i, j;
   for (i=0; i<NUM_REGISTERED_MODULES; i++) {
     printf("%d - Module [%s] - {", i, modules[i]->number);
@@ -192,7 +192,7 @@ void print_modules(Module **modules) {
 /*
 ** Initializes the judge struct and adds it to active_judges
 */
-int init_judge(Judge *judge, Request *request, Module **modules) {
+int init_judge(Judge *judge, Request *request) {
   // Set the judge id
   pthread_mutex_lock(&inc_lock);
   sprintf(&judge->id, "%ld", id_incrementor++);
@@ -212,8 +212,9 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
   strcpy(&judge->module_num, request->module_num);
 
   // Find the right module
-  Module *module = find_module(modules, &judge->module_num);
+  Module *module = find_module(&judge->module_num);
   if (!module) {
+    printf("Warning - could not find module for %s\n", judge->module_num);
     free(judge->source_path);
     return 1;
   }
@@ -269,13 +270,16 @@ int init_judge(Judge *judge, Request *request, Module **modules) {
 */
 int add_judge(Judge *judge) {
   int i = 0;
+  pthread_mutex_lock(&judge_lock);
   while (i < MAX_JUDGES) {
     if (!active_judges[i]) {
       active_judges[i] = judge;
+      pthread_mutex_unlock(&judge_lock);
       return 0;
     }
     i++;
   }
+  pthread_mutex_unlock(&judge_lock);
   return 1;
 }
 
@@ -368,7 +372,7 @@ void handle_request(Request *request) {
 
   if (validate_request(request)) return;
 
-  if (init_judge(judge, request, &registered_modules)) {
+  if (init_judge(judge, request)) {
     send_message(request->socket_fd, UNK_ERR);
     return;
   }
@@ -391,7 +395,6 @@ void handle_request(Request *request) {
     exit(EXIT_FAILURE);
   } else {
     judge->pid = pid;
-
     alarm(MAX_TIME_ALLOWED);
   }
 }
@@ -401,8 +404,7 @@ void handle_request(Request *request) {
 /*
 ** Blocking call to sit and listen on the read-end of the judges shared pipe.
 ** Message format: <message size><delimiter><judge_id><delimiter><ack_code><delimiter>
-** When receives a fatal ack {CMP_ERR, RUN_ERR, CHK_ERR} or judge complete
-** {JDG_AOK} it destructs that judge and records its run result.
+** Calls handle_ack(), which reacts appropriately based on type of ack.
 */
 void listen_to_judges() {
   int bytes_received, bytes_read, pipe_in = fd[0];
@@ -473,7 +475,7 @@ void signal_handler(int signal) {
 void fatal_event_handler() {
   // TODO: Free resources that will live after process is destroyed.
   // TODO: Cancel all worker threads (judge and pipe_listener)
-  if (registered_modules) destruct_modules(&registered_modules);
+  if (modules) destruct_modules();
   if (db) close_db(db);
   if (listen_queue_socket) close(listen_queue_socket);
   exit(EXIT_FAILURE);
@@ -529,6 +531,7 @@ void alarm_handler(int signal) {
 ** If supplied a non-fatal ack_code, echos to client and returns.
 ** For fatal ack_codes, records result in database and destructs the judge. 
 ** If an error file exists {CMP_ERR, RUN_ERR} echos its content to client. 
+** If receives JDG_AOK sends over the solution file
 */
 void act_on_ack(Judge *judge, char *ack_code) {
   
@@ -626,7 +629,7 @@ int run_server() {
   chdir(APP_ROOT);
 
   // Initialize modules
-  init_modules(&registered_modules);
+  init_modules();
 
   // Set up shared pipe
   pipe(fd);
@@ -675,16 +678,14 @@ int run_server() {
     // Let the handler receive request data
     init_request(&request);
     receive_request(&request);
-    
-    // TODO: Move this to a new thread to handle concurrent requests
     handle_request(&request);
     destruct_request(&request);
   }
 }
 
 /*
- * Looks up and reports all records for specified module
- */
+** Looks up and reports all records for specified module
+*/
 int module_results(char *module_num) {
   // Open connection to the database
   if (open_db(&db, DB_PATH))
@@ -700,8 +701,8 @@ int module_results(char *module_num) {
 }
 
 /*
- * Looks up and reports all records for specified user
- */
+** Looks up and reports all records for specified user
+*/
 int user_results(char *user) {
   // Open connection to the database
   if (open_db(&db, DB_PATH))
