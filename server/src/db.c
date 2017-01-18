@@ -42,7 +42,7 @@ int open_db(sqlite3 **db, char *db_path) {
   // Open connection and heck return code for errors
 	if(sqlite3_open(db_path, db)) return 1;
 
-  printf("Successfully connected to the database\n");
+  if (DEBUG) printf("Successfully connected to the database\n");
   return 0;
 }
 
@@ -76,7 +76,7 @@ int create_table(sqlite3 *db) {
     return 1;
 	}
 
-  printf("Table %s created successfully\n", DB_TABLE_NAME);
+  if (DEBUG) printf("Table %s created successfully\n", DB_TABLE_NAME);
   return 0;
 }
 
@@ -139,7 +139,7 @@ int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
 		return 1;
 	}
 
-	printf("Succesfully retrieved records for user %s\n", user);
+	if (DEBUG) printf("Succesfully retrieved records for user %s\n", user);
 	return 0;
 }
 
@@ -169,7 +169,7 @@ int lookup_module(sqlite3 *db, char *module_num, char *response_buffer) {
 		return 1;
 	}
 
-	printf("Succesfully retrieved records for module %s\n", module_num);
+	if (DEBUG) printf("Succesfully retrieved records for module %s\n", module_num);
 	return 0;
 }
 

@@ -5,15 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ARG_DELIM ":"
-#define HEADER_PREFIX "FBEGIN"
-#define TCP_PACKET_SIZE 4096
-#define MAX_ERROR_SIZE 1024
+#define server_address   "104.199.193.162"
+#define server_address   "localhost"
+#define port_number       31337
 
-#define KNRM  "\x1B[00m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
+#define ARG_DELIM        ":"
+#define HEADER_PREFIX    "FBEGIN"
+#define TCP_PACKET_SIZE   4096
+#define MAX_ERROR_SIZE    1024
+
+#define KNRM             "\x1B[00m"
+#define KRED             "\x1B[31m"
+#define KGRN             "\x1B[32m"
+#define KYEL             "\x1B[33m"
 
 #define ACK_LEN 7 
 

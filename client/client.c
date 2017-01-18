@@ -21,15 +21,15 @@ int connect_to_server(char *server, int PORT, char *error) {
   }
 
   // Initialize socket address struct 
-  struct sockaddr_in server_address;
-  server_address.sin_family = host_info->h_addrtype;
-  memcpy((char *)&server_address.sin_addr.s_addr, host_info->h_addr_list[0],
+  struct sockaddr_in server_addr;
+  server_addr.sin_family = host_info->h_addrtype;
+  memcpy((char *)&server_addr.sin_addr.s_addr, host_info->h_addr_list[0],
          host_info->h_length);
-  server_address.sin_port = htons(PORT);
+  server_addr.sin_port = htons(PORT);
 
   // Try to connect to the server
-  if (connect(socket_fd, (struct sockaddr *)&server_address,
-              sizeof(server_address)) < 0) {
+  if (connect(socket_fd, (struct sockaddr *)&server_addr,
+              sizeof(server_addr)) < 0) {
     sprintf(error, "Cannot connect to server");
     return -1;
   }
@@ -180,9 +180,6 @@ int main(int argc, char **argv) {
   printf(KYEL);
 
   // Set request parameters
-  //const char *server_address = "104.199.193.162";
-  const char *server_address = "localhost";
-  const int port_number = 31337;
   const char *file_to_send = argv[3];
   const char *user = argv[1];
   const char *module_num = argv[2];
