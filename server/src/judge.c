@@ -18,63 +18,70 @@ char diff_file[MAX_FILENAME_LEN];
 ** Creates sandbox user/module_num
 ** reroutes the stdout and stderr of the process to log_file and err_file
 */
-void init_sandbox(char *user, char *module_num) {
-  // Create SUB directory if it doesn't exist and chdir into it
-  if (access(SUB, F_OK) == -1) system("mkdir "SUB);
-  chdir(SUB);
+void init_sandbox(char *user, char *module_num, char *filename) {
+  // Create SANDBOX directory if it doesn't exist and chdir into it
+  if (access(SANDBOX, F_OK) == -1) system("mkdir "SANDBOX);
+  chdir(SANDBOX);
 
   // Create user directory if does not exist already
   char command1[MAX_COMMAND_LEN];
-  sprintf(&command1, "mkdir %s", user);
+  sprintf(command1, "mkdir %s", user);
   if (access(user, F_OK) == -1) system(command1);
 
   // Remove module directory
   char command2[MAX_COMMAND_LEN];
-  sprintf(&command2, "rm -rf %s/%s", user, module_num);
+  sprintf(command2, "rm -rf %s/%s", user, module_num);
   system(command2);
 
   // Create module directory
   char command3[MAX_COMMAND_LEN];
-  sprintf(&command3, "mkdir %s/%s", user, module_num);
+  sprintf(command3, "mkdir %s/%s", user, module_num);
   system(command3);
 
   // Log stdout
-  sprintf(&log_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
+  sprintf(log_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
           LOGFILE_SUFFIX);
   freopen(log_file, "w", stdout);
 
   // Log stderr
-  sprintf(&err_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
+  sprintf(err_file, "%s/%s/%s_%s_%s", user, module_num, user, module_num,
           ERRORFILE_SUFFIX);
   freopen(err_file, "w", stderr);
 
+  // Copy submitted sourcefile
+  char command4[MAX_COMMAND_LEN];
+  sprintf(command4, "cp ../%s/%s %s/%s/%s", TEMP, filename, user, 
+      module_num, MAINFILE_SUFFIX);
+  system(command4);
+
   if (DEBUG) {
     printf("%sRedirecting stdout output%s\n", FILLER, FILLER);
-    printf("$(%s)\n$(%s)\n$(%s)\n", command1, command2, command3);
+    printf("$(%s)\n$(%s)\n$(%s)\n$(%s)", 
+        command1, command2, command3, command4);
   }
 }
 
 /*
-** Compiles C file (temp/filename) for user for module module_num
-** Binary will be at user/module_num/bin
+** Compiles C file (MAINFILE_SUFFIX) for user for module module_num
+** Binary will be named user/module_num/bin
 ** Returns 0 if compiled with no errors otherwise positive number
 */
-int compile_source(char *filename, char *user, char *module_num) {
+int compile_source(char *user, char *module_num) {
   if (DEBUG)
     printf("\n%sCompiling module %s [%s] for %s%s\n", FILLER, module_num,
-           filename, user, FILLER);
+           MAINFILE_SUFFIX, user, FILLER);
 
   // Compile source
   char command[MAX_COMMAND_LEN];
-  memset(&command, 0, MAX_COMMAND_LEN);
-  sprintf(&command, "gcc -w ../%s/%s -o %s/%s/%s", TEMP, filename, user, module_num,
-          BIN);
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "gcc -w %s/%s/%s -o %s/%s/%s", user, module_num,
+      MAINFILE_SUFFIX, user, module_num, BIN);
   if (DEBUG) printf("$(%s)\n", command);
   system(command);
 
   if (DEBUG)
     printf("%sFinished compiling module %s [%s] for %s%s\n\n", FILLER,
-           module_num, filename, user, FILLER);
+           module_num, MAINFILE_SUFFIX, user, FILLER);
 
   // Read error log file stats
   struct stat log_stat;
@@ -91,7 +98,7 @@ int run_program(char *user, char *module_num, char *input_file) {
     printf("\n%sRunning %s/%s/%s%s\n", FILLER, user, module_num, BIN, FILLER);
 
   // Redirect output to OUT
-  sprintf(&out_file, "%s/%s/%s_%s_%s_%s", user, module_num, user, module_num,
+  sprintf(out_file, "%s/%s/%s_%s_%s_%s", user, module_num, user, module_num,
           OUTFILE_PREFIX, input_file);
   freopen(out_file, "w", stdout);
 
@@ -232,7 +239,7 @@ int main(int argc, char **argv) {
   char **input_files = &argv[k];
 
   // Create sandbox
-  init_sandbox(user, module_num);
+  init_sandbox(user, module_num, source_file);
 
   // Log arguments
   int i;
@@ -243,7 +250,7 @@ int main(int argc, char **argv) {
   }
 
   // Compile submitted source code
-  int comp_result = compile_source(source_file, user, module_num);
+  int comp_result = compile_source(user, module_num);
 
   // Write compilation result code to pipe, exit if errored
   if (comp_result) {

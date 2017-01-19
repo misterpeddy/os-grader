@@ -296,8 +296,36 @@ Judge *get_judge(char *id_str) {
 }
 
 /*
+** Assuming judge is a valid judge, it copies the content of
+** the sandbox to a permanent directory in submissions.
+*/
+void copy_sandbox_to_sub(Judge *judge) {
+  char command[MAX_COMMAND_LEN];
+
+  // Create user directory
+  sprintf(command, "%s/%s", SUB, judge->user);
+  mkdir(command, S_IRWXU | S_IRWXG);
+
+  // Create module directory
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "%s/%s/%s", SUB, judge->user, judge->module_num);
+  mkdir(command, S_IRWXU | S_IRWXG);
+
+  // Append date/time to directory name
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "cp -rf %s/%s/%s %s/%s/%s/%d_%d_%d_%d_%d_%d",
+      SANDBOX, judge->user, judge->module_num,
+      SUB, judge->user, judge->module_num, tm.tm_year + 1900, tm.tm_mon + 1,
+        tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+  system(command); 
+}
+
+/*
 ** Frees all memory associated with a Judge struct.
-** Also removes the entry from the active_judges list
+** Removes the entry from the active_judges list and trasnfers
+** its content to the permanent SUB directory.
 */
 void destruct_judge(Judge *judge) {
   
@@ -310,6 +338,9 @@ void destruct_judge(Judge *judge) {
     }
   }
   if (!found) return;
+ 
+  // Copy content of sandbox to submissions
+  copy_sandbox_to_sub(judge);
 
   // Free all input file paths
   for (i = 0; i < judge->num_input_files; i++) {
@@ -554,7 +585,7 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
     // Compute error file path
     char log_file[MAX_FILENAME_LEN];
-    sprintf(&log_file, "%s/%s/%s/%s_%s_%s", SUB, judge->user, judge->module_num, judge->user, 
+    sprintf(log_file, "%s/%s/%s/%s_%s_%s", SANDBOX, judge->user, judge->module_num, judge->user, 
         judge->module_num, ERRORFILE_SUFFIX);
 
     // Send judge error ack
@@ -569,9 +600,9 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
   if (DEBUG)
     printf("Judge with pid (%d) for user (%s) is Done\n", judge->pid,
-           &judge->user);
+           judge->user);
 
-  // Close socket connection, wait on judge process, and destruct judge
+ // Close socket connection, wait on judge process, and destruct judge
   close_connection(judge->socket_fd);
   waitpid(judge->pid, NULL, NULL);
   destruct_judge(judge);
@@ -627,6 +658,10 @@ int run_server() {
     fatal_error("BIN_ROOT [%s] not a valid directory. Please change in settings." BIN_ROOT);
 
   chdir(APP_ROOT);
+
+  // Make sure submissions directory exists
+  if ((stat(SUB, &root_stat) != 0) || S_ISDIR(root_stat.st_mode))
+    mkdir(SUB, S_IRWXU | S_IRWXG);
 
   // Initialize modules
   init_modules();

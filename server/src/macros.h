@@ -4,57 +4,65 @@
 #include <sys/time.h>
 
 /* Shared macros */
-#define DEBUG 1
-#define VERBOSE 1
-#define DELIM "*"
-#define ARG_DELIM ":"
-#define MAX_FILENAME_LEN 128
-#define MAX_COMMAND_LEN 512
-#define MAX_PACKET_SIZE 512
+
+#define DEBUG                   1
+#define VERBOSE                 1
+#define DELIM                   "*"
+#define ARG_DELIM               ":"
+#define MAX_FILENAME_LEN        128
+#define MAX_COMMAND_LEN         512
+#define MAX_PACKET_SIZE         512
 
 /* Judge macros */
-#define FILLER "*****"
-#define TTY "/dev/tty"
-#define MAX_ARGS 8
-#define MAX_ENVS 8
-#define MAX_FD 32
-#define MAX_TIME_ALLOWED 3
-#define MAX_JUDGES 32
+
+#define FILLER                  "*****"
+#define TTY                     "/dev/tty"
+#define MAX_ARGS                8
+#define MAX_ENVS                8
+#define MAX_FD                  32
+#define MAX_TIME_ALLOWED        3
+#define MAX_JUDGES              32
 
 /* Coordinator macros */
-#define MAX_INPUT_FILES 16
-#define MAX_NUM_THREADS 16
-#define MAX_DB_RESULT_LEN 1<<20
-#define MILLI 1000000
-#define MIN_USER_LEN 3
+
+#define MAX_INPUT_FILES         16
+#define MAX_NUM_THREADS         16
+#define MAX_DB_RESULT_LEN       1<<20
+#define MILLI                   1000000
+#define MIN_USER_LEN            3
 
 /* Server macros */
-#define PORT 31337
-#define HEADER_PREFIX "FBEGIN"
-#define ARG_DELIM ":"
-#define TCP_PACKET_SIZE 512
+
+#define PORT                    31337
+#define HEADER_PREFIX           "FBEGIN"
+#define ARG_DELIM               ":"
+#define TCP_PACKET_SIZE         512
 #define MAX_WAITING_CONNECTIONS 5
 
 /* Internal filename suffixes */
+
 #define LOGFILE_SUFFIX          "log.txt"
 #define ERRORFILE_SUFFIX        "error.txt"
 #define DIFF_SUFFIX             "diff.txt"
 #define OUTFILE_PREFIX          "out"
 #define SOLFILE_PREFIX          "solution"
 #define SOLFILE_SUFFIX          ".c"
+#define MAINFILE_SUFFIX         "main.c"
 
 /* Internal directories */
-#define BIN "bin"
-#define MODULES "modules"
-#define SANDBOX "sandbox"
-#define JUDGE "judge"
-#define TEMP "tmp"
-#define SUB "submissions"
+
+#define BIN                     "bin"
+#define MODULES                 "modules"
+#define SANDBOX                 "sandbox"
+#define JUDGE                   "judge"
+#define TEMP                    "tmp"
+#define SUB                     "submissions"
 
 /* Command line argument options */
-#define RUN_SERVER      "runserver"
-#define MODULE_RESULTS  "module"
-#define USER_RESULTS    "user"
+
+#define RUN_SERVER              "runserver"
+#define MODULE_RESULTS          "module"
+#define USER_RESULTS            "user"
 
 /* Acknowledgment messages */
 #define CMP_AOK   "CMP_AOK" /* Compilation succeeded            */
