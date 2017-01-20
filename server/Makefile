@@ -19,3 +19,5 @@ debug: coordinator.c macros.h settings.h server.c db.c
 clean:
 	rm -rf *swp *gch $(BIN)*
 
+delete_data:
+	rm -rf db/* submissions tmp sandbox

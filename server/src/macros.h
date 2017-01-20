@@ -6,7 +6,7 @@
 /* Shared macros */
 
 #define DEBUG                   1
-#define VERBOSE                 1
+#define VERBOSE                 0
 #define DELIM                   "*"
 #define ARG_DELIM               ":"
 #define MAX_FILENAME_LEN        128
@@ -20,7 +20,7 @@
 #define MAX_ARGS                8
 #define MAX_ENVS                8
 #define MAX_FD                  32
-#define MAX_TIME_ALLOWED        3
+#define MAX_TIME_ALLOWED        2
 #define MAX_JUDGES              32
 
 /* Coordinator macros */
@@ -99,6 +99,7 @@ typedef struct {
   char *exec_args[2 << 5];      /* Command line arguments                 */
   char *exec_envs[2 << 5];      /* Environment variables                  */
   int socket_fd;                /* Client connection socket fd            */
+  char terminated;              /* Whether judge is done                  */
 } Judge;
 
 typedef struct {

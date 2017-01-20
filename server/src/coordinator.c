@@ -535,6 +535,11 @@ void alarm_handler(int signal) {
 
       // Check if process has max'd out
       if (lifetime > MAX_TIME_ALLOWED * MILLI) {
+
+        // Don't do anything if judge process has terminated normally
+        if (judge->terminated)
+          continue;
+
         if (DEBUG)
           printf("Judge process (%d) for user (%s) timed out - Exiting\n",
                  judge->pid, &judge->user);
@@ -579,6 +584,9 @@ void act_on_ack(Judge *judge, char *ack_code) {
   if (strcmp(ack_code, &JDG_AOK) && strcmp(ack_code, &CMP_ERR) &&
       strcmp(ack_code, &RUN_ERR) && strcmp(ack_code, &CHK_ERR)) 
     return;
+
+  // Mark judge as terminated
+  judge->terminated = 1;
 
   // If an error code, echo error file to client
   if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
