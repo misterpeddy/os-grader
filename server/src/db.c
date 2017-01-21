@@ -1,6 +1,8 @@
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "db.h"
 #include "macros.h"
@@ -10,7 +12,8 @@
 /*
 ** To be used as the callback to sqlite3_exec() for SELECT statements.
 ** Assumes the first argument is a string, which the response is written to, with following format:
-** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<TIMESTAMP><SQL_COL_DELIM><USER><SQL_COL_DELIM><MODULE NUMBER>
+** <SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
 ** If no rows are returned, it will leave passed_buffer untouched.
 ** Non-zero return value would cause a SQLITE_ABORT return value for the responsible sqlite3_exec() call. 
 */
@@ -24,10 +27,11 @@ static int record_retrieval_callback(void *passed_buffer, int argc, char **argv,
 
 	// Write the response in the specified format
 	sprintf(response_buffer
-			,"%s%s%s%s%s%s" 
+			,"%s%s%s%s%s%s%s%s" 
 			, argv[0] ? argv[0] : NULL_STR, SQL_COL_DELIM
 			, argv[1] ? argv[1] : NULL_STR, SQL_COL_DELIM
-			, argv[2] ? argv[2] : NULL_STR, SQL_LINE_DELIM);
+			, argv[2] ? argv[2] : NULL_STR, SQL_COL_DELIM
+			, argv[3] ? argv[3] : NULL_STR, SQL_LINE_DELIM);
 
 	return 0;
 }
@@ -58,11 +62,13 @@ int create_table(sqlite3 *db) {
 	char sql_command[MAX_SQL_COMMAND_LEN];
 	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
 	sprintf(sql_command, 
-      "CREATE TABLE %s("							/* DB_TABLE_NAME */ 
-      "%s     CHAR(%d)	NOT NULL," 		/* DB_COL_USER */
-      "%s  		CHAR(%d)  NOT NULL,"  	/* DB_COL_MODNUM */
-      "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT */
+      "CREATE TABLE %s("							/* DB_TABLE_NAME    */ 
+      "%s   	CHAR(%d)   NOT NULL," 	/* DB_COL_TIMESTAMP */
+      "%s     CHAR(%d)   NOT NULL," 	/* DB_COL_USER      */
+      "%s  		CHAR(%d)   NOT NULL,"  	/* DB_COL_MODNUM    */
+      "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT    */
       , DB_TABLE_NAME
+      , DB_COL_TIMESTAMP, MAX_TIMESTAMP_LEN
 			, DB_COL_USER, MAX_FILENAME_LEN
 			, DB_COL_MODNUM, MAX_MODNUM_DIGITS
 			, DB_COL_RESULT, MAX_ACK_LEN);
@@ -90,16 +96,25 @@ int insert_record(sqlite3 *db, char *user, char *module_num, char *result) {
 	char *error_message;
 	int return_code;
 
+  // Compute current time
+  char timestamp[MAX_TIMESTAMP_LEN];
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  memset(timestamp, 0, MAX_TIMESTAMP_LEN);
+  sprintf(timestamp, "%d-%d-%d-%d-%d-%d",
+      tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
+      tm.tm_hour, tm.tm_min, tm.tm_sec);
+
 	// Create SQL statement 
 	char sql_command[MAX_SQL_COMMAND_LEN];
 	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
 	sprintf(sql_command, 		
 			"INSERT INTO %s "
-			"(%s, %s, %s) "
-			"VALUES ('%s', '%s', '%s'); "
+			"(%s, %s, %s, %s) "
+			"VALUES ('%s', '%s', '%s', '%s'); "
 			, DB_TABLE_NAME 
-			, DB_COL_USER, DB_COL_MODNUM, DB_COL_RESULT
-			, user, module_num, result);
+			, DB_COL_TIMESTAMP, DB_COL_USER, DB_COL_MODNUM, DB_COL_RESULT
+			, timestamp, user, module_num, result);
 
 	// Execute SQL statement
 	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
@@ -109,17 +124,25 @@ int insert_record(sqlite3 *db, char *user, char *module_num, char *result) {
 		return 1;
 	}
 
-	if (DEBUG) printf("Result <%s, %s, %s> was recorded successfully\n", user, module_num, result);
+	if (DEBUG) printf("Result <%s, %s, %s, %s> was recorded successfully\n", 
+      timestamp, user, module_num, result);
 	return 0;
 }
 
 /*
 ** Assuming a valid db connection, lookup_user looks up all entries for a user
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><RESULT CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM>
+** <RESULT CODE><SQL_COL_DELIM><TIMESTAMP><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
 int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
+  // Make sure input is valid
+  if (strchr(user, ' ')) {
+    printf("Username (%s) cannot contain space\n");
+    exit(EXIT_FAILURE);
+  }
+
 	// Declare error buffer and return code
 	char *error_message;
 	int return_code;
@@ -146,10 +169,17 @@ int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
 /*
 ** Assuming a valid db connection, lookup_module looks up all entries for an module
 ** in the database and writes the response to response_buffer with following format:
-** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM><STATUS CODE><SQL_LINE_DELIM>]*
+** [<USER><SQL_COL_DELIM><MODULE NUMBER><SQL_COL_DELIM>
+** <RESULT CODE><SQL_COL_DELIM><TIMESTAMP><SQL_LINE_DELIM>]*
 ** Returns 1 if any errors occur, otherwise 0.
 */
 int lookup_module(sqlite3 *db, char *module_num, char *response_buffer) {
+  // Make sure input is valid
+  if (strchr(module_num, ' ')) {
+    printf("Module name (%s) cannot contain space\n");
+    exit(EXIT_FAILURE);
+  }
+
 	// Declare error buffer and return code
 	char *error_message;
 	int return_code;

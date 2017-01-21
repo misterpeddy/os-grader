@@ -8,17 +8,18 @@
 
 #define VERBOSE 1
 
-//#define server_address   "104.199.193.162"
-#define server_address   "localhost"
+#define server_address   "104.199.193.162"
+//#define server_address   "localhost"
 #define port_number       31337
 
 #define SOL_SUFFIX       "solution.c"
 #define ARG_DELIM        ":"
 #define HEADER_PREFIX    "FBEGIN"
-#define TCP_PACKET_SIZE   512
-#define MAX_ERROR_SIZE    1024
-#define MAX_FILENAME_LEN  128
-#define MAX_HEADER_ELEMS  8
+#define TCP_PACKET_SIZE   1<<9
+#define MAX_ERROR_SIZE    1<<10
+#define MAX_FILENAME_LEN  1<<7
+#define MAX_HEADER_ELEMS  1<<3
+#define KILOBYTE          1<<10
 
 #define KNRM             "\x1B[00m"
 #define KRED             "\x1B[31m"
@@ -68,7 +69,9 @@
   
 /*
 ** Indicates the state of the connection.
-** Each ack can 1) not change it 2) terminate it or 
+** Each ack can 
+** 1) not change connection state
+** 2) terminate it
 ** 3) send the client into file receiving mode
 */
 typedef enum {

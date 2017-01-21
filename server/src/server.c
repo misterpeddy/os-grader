@@ -254,7 +254,10 @@ int send_solution(int socket_fd, char *module_num) {
   // Wait for ack from client
   memset(buffer, 0, TCP_PACKET_SIZE);
   recv(socket_fd, buffer, TCP_PACKET_SIZE, 0);
-  if (strcmp(buffer, FIL_AOK)) return 1;
+  if (strcmp(buffer, FIL_AOK)) {
+    printf("Received bad ack (%s)\n", buffer);
+    return 1;
+  }
 
   return 0;
 }
@@ -277,7 +280,7 @@ int send_file(int socket_fd, char *filepath) {
   // If empty file, return
   if (!bytes_remaining) {
     fclose(r_file);
-    return;
+    return -1;
   }
 
   // Send ack that a file is being streamed over

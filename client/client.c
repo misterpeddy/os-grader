@@ -48,19 +48,19 @@ int handle_ack(char *ack) {
 			printf(REQ_AOK_MSG);
 	} else if (!strncmp(ack, INV_USR, strlen(INV_USR))){
 			printf(INV_USR_MSG);
-			return 1;
+			return TERMINATE;
 	} else if (!strncmp(ack, INV_MOD, strlen(INV_MOD))){
 			printf(INV_MOD_MSG);
-			return 1;
+			return TERMINATE;
 	} else if (!strncmp(ack, UNK_ERR, strlen(UNK_ERR))){
 			printf(UNK_ERR_MSG);
-			return 1;
+			return TERMINATE;
 	} else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
 			printf(CHK_ERR_MSG);
-			return 1;
+			return TERMINATE;
 	} else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
 			printf(TIM_OUT_MSG);
-			return 1;
+			return TERMINATE;
 	} else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
 			printf(CMP_AOK_MSG);
 	} else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
@@ -87,6 +87,7 @@ int handle_ack(char *ack) {
 
 /*
 ** Parses the header of the request and returns an array of tokens
+** Returns the number of tokens parsed
 */
 int parse_arguments(char **args, char *line) {
   int i = 0;

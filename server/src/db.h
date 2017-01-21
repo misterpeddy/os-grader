@@ -5,15 +5,17 @@
 
 #define DB_PATH       "db/testing.db"
 
-#define MAX_SQL_RESPONSE_LEN  1024
-#define MAX_SQL_COMMAND_LEN   512
+#define MAX_SQL_RESPONSE_LEN  1<<10
+#define MAX_SQL_COMMAND_LEN   1<<9
 #define MAX_MODNUM_DIGITS     5
-#define MAX_ACK_LEN           8
+#define MAX_ACK_LEN           1<<3
+#define MAX_TIMESTAMP_LEN     1<<5
 
 #define DB_TABLE_NAME         "SUBMISSIONS"
 #define DB_COL_USER           "USER"
 #define DB_COL_MODNUM         "MODULE_NUM"
 #define DB_COL_RESULT         "RESULT"
+#define DB_COL_TIMESTAMP      "TIMESTAMP"
 
 #define SQL_COL_DELIM         "*"
 #define SQL_LINE_DELIM        "\n"
