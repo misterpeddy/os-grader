@@ -129,7 +129,7 @@ void receive_solution(int socket_fd) {
     }
 
     char filepath[MAX_FILENAME_LEN];
-    sprintf(filepath, "%s_%s", module_num, SOL_SUFFIX);
+    sprintf(filepath, "%s_%s_%s", INSTR, module_num, SOL_SUFFIX);
 
     // Open file to write to and
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);

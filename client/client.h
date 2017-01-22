@@ -8,11 +8,12 @@
 
 #define VERBOSE 1
 
-//#define server_address   "104.199.193.162"
-#define server_address   "localhost"
+#define server_address   "104.199.193.162"
+//#define server_address   "localhost"
 #define port_number       31337
 
-#define SOL_SUFFIX       "solution.c"
+#define INSTR            "instructor"
+#define SOL_SUFFIX       "sol.c"
 #define ARG_DELIM        ":"
 #define HEADER_PREFIX    "FBEGIN"
 #define TCP_PACKET_SIZE   1<<9
