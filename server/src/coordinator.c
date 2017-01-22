@@ -198,6 +198,9 @@ int init_judge(Judge *judge, Request *request) {
   sprintf(&judge->id, "%ld", id_incrementor++);
   pthread_mutex_unlock(&inc_lock);
 
+  // Set terminated bit
+  judge->terminated = 0;
+
   // Copy shared pipe descriptors, fd[0] for reading, fd[1] for writing
   sprintf(&judge->fd_w, "%d", fd[1]);
 

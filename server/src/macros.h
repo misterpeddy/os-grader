@@ -15,6 +15,7 @@
 
 /* Judge macros */
 
+#define NON_PRIV_USR						1000
 #define FILLER                  "*****"
 #define TTY                     "/dev/tty"
 #define MAX_ARGS                8
@@ -51,12 +52,13 @@
 
 /* Internal directories */
 
-#define BIN                     "bin"
+#define BIN                     "binary"
 #define MODULES                 "modules"
 #define SANDBOX                 "sandbox"
 #define JUDGE                   "judge"
 #define TEMP                    "tmp"
 #define SUB                     "submissions"
+#define FILES                   "files"
 
 /* Command line argument options */
 
