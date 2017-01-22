@@ -21,7 +21,7 @@
 #define MAX_ARGS                8
 #define MAX_ENVS                8
 #define MAX_FD                  32
-#define MAX_TIME_ALLOWED        2
+#define MAX_TIME_ALLOWED        5
 #define MAX_JUDGES              32
 
 /* Coordinator macros */

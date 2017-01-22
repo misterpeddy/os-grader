@@ -650,14 +650,11 @@ void fatal_error(char *format, ...) {
 */
 int run_server() {
 
-  /*
   // Stop if not running as root
-  printf("[%d]id\n", getuid());
   if (getuid()) {
     printf("%s", "This application requires escelated privileges. Please run as root.\n");
     exit(EXIT_FAILURE);
   }
-  */
 
   // Change current working directory to root of the application
   struct stat root_stat; 
