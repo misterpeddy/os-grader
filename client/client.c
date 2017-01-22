@@ -44,45 +44,45 @@ int connect_to_server(char *server, int PORT, char *error) {
 ** Returns an AckResult enum member
 */
 int handle_ack(char *ack) {
-	if (!strncmp(ack, REQ_AOK, strlen(REQ_AOK))) {
-			printf(REQ_AOK_MSG);
-	} else if (!strncmp(ack, INV_USR, strlen(INV_USR))){
-			printf(INV_USR_MSG);
-			return TERMINATE;
-	} else if (!strncmp(ack, INV_MOD, strlen(INV_MOD))){
-			printf(INV_MOD_MSG);
-			return TERMINATE;
-	} else if (!strncmp(ack, UNK_ERR, strlen(UNK_ERR))){
-			printf(UNK_ERR_MSG);
-			return TERMINATE;
-	} else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
-			printf(CHK_ERR_MSG);
-			return TERMINATE;
-	} else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
-			printf(TIM_OUT_MSG);
-			return TERMINATE;
-	} else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
-			printf(CMP_AOK_MSG);
-	} else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
-			printf(CMP_ERR_MSG);
-	} else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
-			printf(RUN_AOK_MSG);
-	} else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
-			printf(RUN_ERR_MSG);
-	} else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
-			printf(CHK_AOK_MSG);
-	} else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
-			printf(JDG_AOK_MSG);
-	} else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
-			printf(JDG_ERR_MSG);
-	} else if (!strncmp(ack, BEG_FIL, strlen(BEG_FIL))) {
-			printf(BEG_FIL_MSG);
-	} else if (!strncmp(ack, BEG_SOL, strlen(BEG_SOL))){
-			return RECEIVE_SOLUTION;
-	} else {
-			printf("%s%s%s", KNRM, ack, KYEL);
-	}
-	return NO_ACTION;
+  if (!strncmp(ack, REQ_AOK, strlen(REQ_AOK))) {
+    printf(REQ_AOK_MSG);
+  } else if (!strncmp(ack, INV_USR, strlen(INV_USR))){
+    printf(INV_USR_MSG);
+    return TERMINATE;
+  } else if (!strncmp(ack, INV_MOD, strlen(INV_MOD))){
+    printf(INV_MOD_MSG);
+    return TERMINATE;
+  } else if (!strncmp(ack, UNK_ERR, strlen(UNK_ERR))){
+    printf(UNK_ERR_MSG);
+    return TERMINATE;
+  } else if (!strncmp(ack, CHK_ERR, strlen(CHK_ERR))){
+    printf(CHK_ERR_MSG);
+    return TERMINATE;
+  } else if (!strncmp(ack, TIM_OUT, strlen(TIM_OUT))){
+    printf(TIM_OUT_MSG);
+    return TERMINATE;
+  } else if (!strncmp(ack, CMP_AOK, strlen(CMP_AOK))){
+    printf(CMP_AOK_MSG);
+  } else if (!strncmp(ack, CMP_ERR, strlen(CMP_ERR))){
+    printf(CMP_ERR_MSG);
+  } else if (!strncmp(ack, RUN_AOK, strlen(RUN_AOK))){
+    printf(RUN_AOK_MSG);
+  } else if (!strncmp(ack, RUN_ERR, strlen(RUN_ERR))){
+    printf(RUN_ERR_MSG);
+  } else if (!strncmp(ack, CHK_AOK, strlen(CHK_AOK))){
+    printf(CHK_AOK_MSG);
+  } else if (!strncmp(ack, JDG_AOK, strlen(JDG_AOK))){
+    printf(JDG_AOK_MSG);
+  } else if (!strncmp(ack, JDG_ERR, strlen(JDG_ERR))){
+    printf(JDG_ERR_MSG);
+  } else if (!strncmp(ack, BEG_FIL, strlen(BEG_FIL))) {
+    printf(BEG_FIL_MSG);
+  } else if (!strncmp(ack, BEG_SOL, strlen(BEG_SOL))){
+    return RECEIVE_SOLUTION;
+  } else {
+    printf("%s%s%s", KNRM, ack, KYEL);
+  }
+    return NO_ACTION;
 }
 
 /*
@@ -102,9 +102,9 @@ int parse_arguments(char **args, char *line) {
 */
 void receive_solution(int socket_fd) {
 
-	// Receive the header_tokens and write the file
-	char header_buffer[TCP_PACKET_SIZE];
-	if (recv(socket_fd, header_buffer, sizeof(header_buffer), 0)) {
+  // Receive the header_tokens and write the file
+  char header_buffer[TCP_PACKET_SIZE];
+  if (recv(socket_fd, header_buffer, sizeof(header_buffer), 0)) {
     char *header_tokens[MAX_HEADER_ELEMS];
     char module_num[MAX_FILENAME_LEN];
     int bytes_remaining, bytes_received;
@@ -116,14 +116,14 @@ void receive_solution(int socket_fd) {
       parse_arguments(header_tokens, header_buffer);
       strcpy(module_num, header_tokens[1]);	
       bytes_remaining = atoi(header_tokens[2]);
-
-			// Send header received ack
-			send(socket_fd, HDR_AOK, strlen(HDR_AOK), 0);
+      
+      // Send header received ack
+      send(socket_fd, HDR_AOK, strlen(HDR_AOK), 0);
 
     } else {
       // Print error message and exit
       printf("Failed to receive instructor solution received [%s]\n",
-             header_buffer);
+	     header_buffer);
       close(socket_fd);
       return 1;
     }
@@ -135,10 +135,10 @@ void receive_solution(int socket_fd) {
     FILE *file_to_write = open(filepath, O_WRONLY | O_TRUNC | O_CREAT, 00664);
 
     int total_received=0;
-	  char receive_buffer[TCP_PACKET_SIZE];
+    char receive_buffer[TCP_PACKET_SIZE];
 
     // Listen until file is received or no more packets are being sent
-		while ((bytes_remaining > 0) && 
+    while ((bytes_remaining > 0) && 
         ((bytes_received = recv(socket_fd, receive_buffer, TCP_PACKET_SIZE, 0)) > 0)) {
 
       // Write the received packet of data to the file
@@ -149,11 +149,11 @@ void receive_solution(int socket_fd) {
 
     // Make sure we received the number of bytes we expected
     if (!bytes_remaining) {
-			send(socket_fd, FIL_AOK, strlen(FIL_AOK), 0);
-			printf("Succesfully retrieved instructor's solution file - " 
-          "Saved in current directory\n");
+      send(socket_fd, FIL_AOK, strlen(FIL_AOK), 0);
+      printf("Succesfully retrieved instructor's solution file - "
+        "Saved in current directory\n");
     } else {
-			send(socket_fd, FIL_ERR, strlen(FIL_ERR), 0);
+      send(socket_fd, FIL_ERR, strlen(FIL_ERR), 0);
     }
 
     close(file_to_write);
@@ -198,15 +198,15 @@ int send_request(int socket_fd, char *lfile, char *user, char *module_num) {
   send(socket_fd, write_buffer, sizeof(write_buffer), 0);
 
 
-	// Wait for header to be received
+  // Wait for header to be received
   memset(&write_buffer, 0, TCP_PACKET_SIZE);
-	recv(socket_fd, write_buffer, TCP_PACKET_SIZE, 0);
-	if (strcmp(write_buffer, HDR_AOK)) {
-		printf("Error sending request to server\n");
-		fclose(file_to_send);
-	  close(socket_fd);
+  recv(socket_fd, write_buffer, TCP_PACKET_SIZE, 0);
+  if (strcmp(write_buffer, HDR_AOK)) {
+    printf("Error sending request to server\n");
+    fclose(file_to_send);
+    close(socket_fd);
     return 1;  
-	}
+  }
 
   int remaining = file_size, buff_size = 0, bytes_read;
   printf("Sending file content...\n");
@@ -270,13 +270,13 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // Change text color to yellow
+  // Change terminal text color to yellow
   printf(KYEL);
 
   // Set request parameters
-  const char *file_to_send = argv[3];
   const char *user = argv[1];
   const char *module_num = argv[2];
+  const char *file_to_send = argv[3];
 
   // Establish a TCP connection to the server
   char error_message[MAX_ERROR_SIZE];
@@ -295,6 +295,7 @@ int main(int argc, char **argv) {
   // Close connection
   close(socket_fd);
 
+  // Change terminal text color back to white
   printf(KNRM);
 
   return 0;

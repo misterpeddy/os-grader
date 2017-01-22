@@ -8,8 +8,8 @@
 
 #define VERBOSE 1
 
-#define server_address   "104.199.193.162"
-//#define server_address   "localhost"
+//#define server_address   "104.199.193.162"
+#define server_address   "localhost"
 #define port_number       31337
 
 #define SOL_SUFFIX       "solution.c"
@@ -41,9 +41,9 @@
 #define JDG_AOK   "JDG_AOK" /* Solution accepted                */
 
 #define REQ_AOK   "REQ_AOK" /* Client request received          */
-#define FIL_AOK		"FIL_AOK"	/* File received OK									*/
-#define FIL_ERR		"FIL_ERR"	/* File received with error					*/
-#define HDR_AOK		"HDR_AOK"	/* Header received OK								*/
+#define FIL_AOK	  "FIL_AOK" /* File received OK 		*/
+#define FIL_ERR	  "FIL_ERR" /* File received with error		*/
+#define HDR_AOK	  "HDR_AOK" /* Header received OK		*/
 
 #define INV_USR   "INV_USR" /* Invalid username           FATAL */
 #define INV_MOD   "INV_MOD" /* Invalid module number      FATAL */

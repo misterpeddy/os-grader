@@ -88,7 +88,7 @@ void init_module(Module *module, struct dirent *module_entry) {
   struct dirent *ent;
   while ((ent = readdir(module_dir)) != NULL) {
     if (is_input_file(ent->d_name)) {
-          num_files++; 
+      num_files++; 
     }
   }
   
@@ -108,10 +108,10 @@ void init_module(Module *module, struct dirent *module_entry) {
   int file_counter=0;
   while ((ent = readdir(module_dir)) != NULL) {
     if (is_input_file(ent->d_name)) {
-          module->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
-          memset(module->input_files[file_counter], 0, MAX_FILENAME_LEN);
-          strcpy(module->input_files[file_counter], ent->d_name);
-          file_counter++; 
+      module->input_files[file_counter] = (char *)malloc(MAX_FILENAME_LEN);
+      memset(module->input_files[file_counter], 0, MAX_FILENAME_LEN);
+      strcpy(module->input_files[file_counter], ent->d_name);
+      file_counter++; 
     }
   }
 
@@ -131,10 +131,10 @@ int init_modules() {
   // module in modules directory
   while ((ent = readdir(dir)) != NULL) {
     if (strcmp(ent->d_name, ".") && 
-        strcmp(ent->d_name, "..") &&
-        is_registered(ent->d_name)) {
-      modules[mod_count] = (Module *)malloc(sizeof(Module));
-      init_module(modules[mod_count++], ent);
+      strcmp(ent->d_name, "..") &&
+      is_registered(ent->d_name)) {
+        modules[mod_count] = (Module *)malloc(sizeof(Module));
+        init_module(modules[mod_count++], ent);
     }
   }
 
@@ -238,8 +238,8 @@ int init_judge(Judge *judge, Request *request) {
   judge->exec_args[k++] = &judge->user;
   judge->exec_args[k++] = &judge->module_num;
   judge->exec_args[k++] = judge->fd_w;
-  for (i=0; i<judge->num_input_files; i++)
-    judge->exec_args[k++] = judge->input_files[i];
+  for (i=0; i<judge->num_input_files; i++, k++)
+    judge->exec_args[k] = judge->input_files[i];
   judge->exec_args[k++] = NULL;
 
   // Set environment variables
