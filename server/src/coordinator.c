@@ -587,6 +587,8 @@ void act_on_ack(Judge *judge, char *ack_code) {
 
   // If submission successful, send solution file over to client
   if (!strcmp(ack_code, &JDG_AOK)) {
+    // Mark judge as terminated
+    judge->terminated = 1;
     if (send_solution(judge->socket_fd, judge->module_num) && DEBUG)
       printf("Warning - could not send solution file\n");
   }
@@ -596,8 +598,8 @@ void act_on_ack(Judge *judge, char *ack_code) {
       strcmp(ack_code, &RUN_ERR) && strcmp(ack_code, &CHK_ERR)) 
     return;
 
-  // Mark judge as terminated
-  judge->terminated = 1;
+  // Mark judge as terminated if not already set
+  if (!judge->terminated) judge->terminated = 1;
 
   // If an error code, echo error file to client
   if (!strcmp(ack_code, &CMP_ERR) || !strcmp(ack_code, &RUN_ERR)) {
@@ -664,12 +666,8 @@ void validate_dirs() {
   chdir(APP_ROOT);
 
   // Remove root privilege
-  printf("<%d> <%d>\n", geteuid(), getegid());
-  printf("[%d]\n", setegid(NON_PRIV_USR));
-  perror("1");
-  printf("[%d]\n", seteuid(NON_PRIV_USR));
-  perror("2");
-  printf("<%d> <%d>\n", geteuid(), getegid());
+  setegid(NON_PRIV_USR);
+  seteuid(NON_PRIV_USR);
 
   // Make sure submissions directory exists
   if ((stat(SUB, &root_stat) != 0) || S_ISDIR(root_stat.st_mode)) {
