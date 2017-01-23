@@ -86,8 +86,7 @@ int execute_cmd(const char * format, ...) {
 */
 void init_sandbox(char *user, char *module_num, char *filename) {
 
-  // Create SANDBOX directory if it doesn't exist and chdir into it
-  if (access(SANDBOX, F_OK) == -1) system("mkdir "SANDBOX);
+  // Change dir into the public sandbox directory
   chdir(SANDBOX);
 
   // Delay logging commands until stdout/stderr redirect is done
@@ -180,15 +179,17 @@ int run_program(char *user, char *module_num, char *input_file) {
   freopen(out_file, "w", stdout);
   
   // Remove root privilege
-  seteuid(NON_PRIV_USR);
   setegid(NON_PRIV_USR);
+  seteuid(NON_PRIV_USR);
 
   // Run the binary
   char command[MAX_COMMAND_LEN];
 	memset(command, 0, MAX_COMMAND_LEN);
-  if (input_file) sprintf(command, "./%s < %s/%s", BIN, FILES, input_file);
-  else sprintf(command, "./%s", BIN);
-  int ret = system(command);
+  if (input_file) 
+    sprintf(command, "./%s < %s/%s", BIN, FILES, input_file);
+  else 
+    sprintf(command, "./%s", BIN);
+  system(command);
   
   // Restore root privilege
   seteuid(0);
@@ -242,6 +243,15 @@ int judge(char *user, char *module_num, char *input_file) {
 void clean_and_exit(int code) {
   // Delete lib lib64 bin
   execute_cmd("rm -rf lib lib64 bin");
+
+  // Change owner and group to NON_PRIV_USR
+  char command[MAX_COMMAND_LEN];
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "chown -R %d .", NON_PRIV_USR);
+  system(command);
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "chgrp -R %d .", NON_PRIV_USR);
+  system(command);
 
   if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", FILLER, FILLER);
 

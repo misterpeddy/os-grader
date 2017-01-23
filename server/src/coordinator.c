@@ -323,6 +323,14 @@ void copy_sandbox_to_sub(Judge *judge) {
       SUB, judge->user, judge->module_num, tm.tm_year + 1900, tm.tm_mon + 1,
         tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
   system(command); 
+  
+  // Change owner and group to NON_PRIV_USR
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "chown -R %d %s/%s", NON_PRIV_USR, SUB, judge->user);
+  system(command);
+  memset(command, 0, MAX_COMMAND_LEN);
+  sprintf(command, "chgrp -R %d %s/%s", NON_PRIV_USR, SUB, judge->user);
+  system(command);
 }
 
 /*
@@ -643,6 +651,40 @@ void fatal_error(char *format, ...) {
   fatal_event_handler();
 }
 
+void validate_dirs() {
+  // Change current working directory to root of the application
+  struct stat root_stat; 
+  if ((stat(APP_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("APP_ROOT [%s] not a valid directory. Please change in settings.", APP_ROOT);
+  if ((stat(MODULES_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("MODULES_ROOT [%s] not a valid directory. Please change in settings.", MODULES_ROOT);
+  if ((stat(BIN_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
+    fatal_error("BIN_ROOT [%s] not a valid directory. Please change in settings." BIN_ROOT);
+
+  chdir(APP_ROOT);
+
+  // Remove root privilege
+  printf("<%d> <%d>\n", geteuid(), getegid());
+  printf("[%d]\n", setegid(NON_PRIV_USR));
+  perror("1");
+  printf("[%d]\n", seteuid(NON_PRIV_USR));
+  perror("2");
+  printf("<%d> <%d>\n", geteuid(), getegid());
+
+  // Make sure submissions directory exists
+  if ((stat(SUB, &root_stat) != 0) || S_ISDIR(root_stat.st_mode)) {
+    mkdir(SUB, S_IRWXU | S_IRWXG);
+  }
+  // Make sure sandbox directory exists
+  if ((stat(SANDBOX, &root_stat) != 0) || S_ISDIR(root_stat.st_mode)) {
+    mkdir(SANDBOX, S_IRWXU | S_IRWXG);
+  }
+
+  // Remove root privilege
+  seteuid(0);
+  setegid(0);
+}
+
 /******************************* Main Routines ***********************************/
 
 /*
@@ -656,20 +698,8 @@ int run_server() {
     exit(EXIT_FAILURE);
   }
 
-  // Change current working directory to root of the application
-  struct stat root_stat; 
-  if ((stat(APP_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
-    fatal_error("APP_ROOT [%s] not a valid directory. Please change in settings.", APP_ROOT);
-  if ((stat(MODULES_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
-    fatal_error("MODULES_ROOT [%s] not a valid directory. Please change in settings.", MODULES_ROOT);
-  if ((stat(BIN_ROOT, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode))
-    fatal_error("BIN_ROOT [%s] not a valid directory. Please change in settings." BIN_ROOT);
-
-  chdir(APP_ROOT);
-
-  // Make sure submissions directory exists
-  if ((stat(SUB, &root_stat) != 0) || S_ISDIR(root_stat.st_mode))
-    mkdir(SUB, S_IRWXU | S_IRWXG);
+  // Make sure al X_ROOT directories exist. Chdir into APP_ROOT
+  validate_dirs();
 
   // Initialize modules
   init_modules();
