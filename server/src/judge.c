@@ -240,6 +240,9 @@ int judge(char *user, char *module_num, char *input_file) {
 }
 
 void clean_and_exit(int code) {
+  // Delete lib lib64 bin
+  execute_cmd("rm -rf lib lib64 bin");
+
   if (DEBUG) printf("%sFinishing stdout redirect%s\n\n", FILLER, FILLER);
 
   // Reroute stdout and stderr to TTY
