@@ -671,14 +671,17 @@ void validate_dirs() {
 
   // Make sure submissions directory exists
   if ((stat(SUB, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
-    mkdir(SUB, S_IRWXU | S_IRWXG);
+    if (mkdir(SUB, S_IRWXU | S_IRWXG))
+      fatal_error("Cannot create %s directory - NON_PRIV_USR (%d) is most likely an invalid uid"
+          , SUB, NON_PRIV_USR);
   }
+
   // Make sure sandbox directory exists
   if ((stat(SANDBOX, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
     mkdir(SANDBOX, S_IRWXU | S_IRWXG);
   }
 
-  // Remove root privilege
+  // Restore root privilege
   seteuid(0);
   setegid(0);
 }
@@ -696,7 +699,7 @@ int run_server() {
     exit(EXIT_FAILURE);
   }
 
-  // Make sure al X_ROOT directories exist. Chdir into APP_ROOT
+  // Make sure all X_ROOT directories exist. Chdir into APP_ROOT
   validate_dirs();
 
   // Initialize modules
