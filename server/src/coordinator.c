@@ -678,7 +678,15 @@ void validate_dirs() {
     mkdir(SANDBOX, S_IRWXU | S_IRWXG);
   }
 
-  // Remove root privilege
+  // Make sure USR_NON_PRIV is a valid uid
+  char command[MAX_COMMAND_LEN];
+  sprintf(command, "getent passwd %d", NON_PRIV_USR);
+  printf("Checking that uid %d exists: ", NON_PRIV_USR);
+  fflush(stdout);
+  if (system(command))
+    fatal_error("NON_PRIV_USR does not have a valid uid (%d). Please fix in macros", NON_PRIV_USR);
+
+  // Restore root privilege
   seteuid(0);
   setegid(0);
 }
@@ -696,7 +704,7 @@ int run_server() {
     exit(EXIT_FAILURE);
   }
 
-  // Make sure al X_ROOT directories exist. Chdir into APP_ROOT
+  // Make sure all X_ROOT directories exist. Chdir into APP_ROOT
   validate_dirs();
 
   // Initialize modules
