@@ -321,7 +321,7 @@ void copy_sandbox_to_sub(Judge *judge) {
   sprintf(command, "cp -rf %s/%s/%s %s/%s/%s/%d_%d_%d_%d_%d_%d",
       SANDBOX, judge->user, judge->module_num,
       SUB, judge->user, judge->module_num, tm.tm_year + 1900, tm.tm_mon + 1,
-        tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+      tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
   system(command); 
   
   // Change owner and group to NON_PRIV_USR
@@ -519,7 +519,7 @@ void fatal_event_handler() {
   // TODO: Cancel all worker threads (judge and pipe_listener)
   if (modules) destruct_modules();
   if (db) close_db(db);
-  if (listen_queue_socket) close(listen_queue_socket);
+  if (listen_queue_socket > 0) close(listen_queue_socket);
   exit(EXIT_FAILURE);
 }
 
@@ -670,11 +670,11 @@ void validate_dirs() {
   seteuid(NON_PRIV_USR);
 
   // Make sure submissions directory exists
-  if ((stat(SUB, &root_stat) != 0) || S_ISDIR(root_stat.st_mode)) {
+  if ((stat(SUB, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
     mkdir(SUB, S_IRWXU | S_IRWXG);
   }
   // Make sure sandbox directory exists
-  if ((stat(SANDBOX, &root_stat) != 0) || S_ISDIR(root_stat.st_mode)) {
+  if ((stat(SANDBOX, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
     mkdir(SANDBOX, S_IRWXU | S_IRWXG);
   }
 

@@ -3,7 +3,7 @@
 
 #include <sqlite3.h> 
 
-#define DB_PATH       "db/testing.db"
+#define DB_PATH       "db/staging.db"
 
 #define MAX_SQL_RESPONSE_LEN  1<<10
 #define MAX_SQL_COMMAND_LEN   1<<9

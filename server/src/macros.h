@@ -15,7 +15,7 @@
 
 /* Judge macros */
 
-#define NON_PRIV_USR						1000
+#define NON_PRIV_USR		1000
 #define FILLER                  "*****"
 #define TTY                     "/dev/tty"
 #define MAX_ARGS                8

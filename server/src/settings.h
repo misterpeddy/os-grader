@@ -5,9 +5,9 @@
 #define BIN_ROOT      APP_ROOT"bin/"
 #define MODULES_ROOT  APP_ROOT"modules/"
 
-#define NUM_REGISTERED_MODULES 2
+#define NUM_REGISTERED_MODULES 4
 
-const char *REGISTERED_MODULES[] = {"0", "1"};
+const char *REGISTERED_MODULES[] = {"0", "1", "2", "3"};
 
 /*********************************************NOTES**********************************************/
 /************************************************************************************************/

@@ -56,23 +56,23 @@ void send_ack(int pipe_fd, const char *ack_str, char *judge_id) {
 int execute_cmd(const char * format, ...) {
   char command[MAX_COMMAND_LEN];
 
-	// Capture arguments and write command string
+  // Capture arguments and write command string
   va_list ap; 
   va_start(ap, format);
   vsprintf(command, format, ap);
 
-	// Execute the command and return result
+  // Execute the command and return result
   int ret = system(command);
   va_end(ap);
 
-	// Log output
-	printf("$ %s\n", command);
+  // Log output
+  printf("$ %s\n", command);
 
-	// Log error
-	if (ret) {
-		printf("Warning - command (%s) caused an error code (%d)\n", command, ret);
-		perror(command);
-	}
+  // Log error
+  if (ret) {
+    printf("Warning - command (%s) caused an error code (%d)\n", command, ret);
+    perror(command);
+  }
 
   return ret;
 }
@@ -90,14 +90,14 @@ void init_sandbox(char *user, char *module_num, char *filename) {
   chdir(SANDBOX);
 
   // Delay logging commands until stdout/stderr redirect is done
-	// Create user directory if does not exist already
+  // Create user directory if does not exist already
   char command1[MAX_COMMAND_LEN];
   sprintf(command1, "mkdir %s", user);
   if (access(user, F_OK) == -1) system(command1);
 
-	// Compute path for this submission's sandbox
-	char work_dir[MAX_FILENAME_LEN];
-	sprintf(work_dir, "%s/%s", user, module_num);
+  // Compute path for this submission's sandbox
+  char work_dir[MAX_FILENAME_LEN];
+  sprintf(work_dir, "%s/%s", user, module_num);
 
   // Remove preexisting sandbox for this module
   char command2[MAX_COMMAND_LEN];
@@ -108,7 +108,7 @@ void init_sandbox(char *user, char *module_num, char *filename) {
   char command3[MAX_COMMAND_LEN];
   sprintf(command3, "mkdir %s", work_dir);
   system(command3);
-	chdir(work_dir);
+  chdir(work_dir);
 
   // Log stdout
   sprintf(log_file, "%s_%s_%s", user, module_num, LOGFILE_SUFFIX);
@@ -129,12 +129,11 @@ void init_sandbox(char *user, char *module_num, char *filename) {
   system(command);
   printf("$(%s)\n", command);
 
-	// Copy input/output files
-	// TODO: Prevent the user process from reading/writing to these files
-	execute_cmd("cp -rf ../../../%s/%s %s", MODULES, module_num, FILES);
+  // Copy input/output files
+  execute_cmd("cp -rf ../../../%s/%s %s", MODULES, module_num, FILES);
 
   // Copy essential binaries and libraries
-	execute_cmd("mkdir lib");
+  execute_cmd("mkdir lib");
   execute_cmd("mkdir lib64");
   execute_cmd("mkdir bin");
   execute_cmd("cp -a /lib/x86_64-linux-gnu lib/");
@@ -156,7 +155,7 @@ int compile_source(char *user, char *module_num) {
       MAINFILE_SUFFIX, user, FILLER);fflush(stdout);
 
   // Compile source
-	execute_cmd("gcc -w %s -o %s", MAINFILE_SUFFIX, BIN);
+  execute_cmd("gcc -w %s -o %s", MAINFILE_SUFFIX, BIN);
 
   printf("%sFinished compiling module %s [%s] for %s%s\n\n", FILLER, 
       module_num, MAINFILE_SUFFIX, user, FILLER);fflush(stdout);
@@ -184,7 +183,7 @@ int run_program(char *user, char *module_num, char *input_file) {
 
   // Run the binary
   char command[MAX_COMMAND_LEN];
-	memset(command, 0, MAX_COMMAND_LEN);
+  memset(command, 0, MAX_COMMAND_LEN);
   if (input_file) 
     sprintf(command, "./%s < %s/%s", BIN, FILES, input_file);
   else 
@@ -314,12 +313,12 @@ int main(int argc, char **argv) {
     send_ack(pipe_fd, CMP_AOK, judge_id);
   }
 
-	// Change root
+  // Change root
   if (chroot(".")) {
-		perror("Chroot failed");
-		send_ack(pipe_fd, RUN_ERR, judge_id);
-		clean_and_exit(EXIT_FAILURE);
-	}
+    perror("Chroot failed");
+    send_ack(pipe_fd, RUN_ERR, judge_id);
+    clean_and_exit(EXIT_FAILURE);
+  }
 
   for (i = 0; i < num_input_files; i++) {
     // Run and exit if errored

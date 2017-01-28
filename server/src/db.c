@@ -19,21 +19,21 @@
 */
 static int record_retrieval_callback(void *passed_buffer, int argc, char **argv, char **column_names){
 
-	// Find the first empty spot in the response buffer 
-	char *response_buffer = (char *)passed_buffer;
-	int k=0;
-	while(response_buffer[k++]);
-	response_buffer += k - 1;	
+  // Find the first empty spot in the response buffer 
+  char *response_buffer = (char *)passed_buffer;
+  int k=0;
+  while(response_buffer[k++]);
+    response_buffer += k - 1;	
 
-	// Write the response in the specified format
-	sprintf(response_buffer
-			,"%s%s%s%s%s%s%s%s" 
-			, argv[0] ? argv[0] : NULL_STR, SQL_COL_DELIM
-			, argv[1] ? argv[1] : NULL_STR, SQL_COL_DELIM
-			, argv[2] ? argv[2] : NULL_STR, SQL_COL_DELIM
-			, argv[3] ? argv[3] : NULL_STR, SQL_LINE_DELIM);
+    // Write the response in the specified format
+    sprintf(response_buffer
+      ,"%s%s%s%s%s%s%s%s" 
+      , argv[0] ? argv[0] : NULL_STR, SQL_COL_DELIM
+      , argv[1] ? argv[1] : NULL_STR, SQL_COL_DELIM
+      , argv[2] ? argv[2] : NULL_STR, SQL_COL_DELIM
+      , argv[3] ? argv[3] : NULL_STR, SQL_LINE_DELIM);
 
-	return 0;
+  return 0;
 }
 
 /*
@@ -44,7 +44,7 @@ static int record_retrieval_callback(void *passed_buffer, int argc, char **argv,
 int open_db(sqlite3 **db, char *db_path) {
   
   // Open connection and check return code for errors
-	if(sqlite3_open(db_path, db)) return 1;
+  if(sqlite3_open(db_path, db)) return 1;
 
   if (DEBUG) printf("Successfully connected to the database\n");
   return 0;
@@ -58,29 +58,29 @@ int create_table(sqlite3 *db) {
   // Declare error buffer
   char *error_message;
 
-	// Create SQL statement 
-	char sql_command[MAX_SQL_COMMAND_LEN];
-	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
-	sprintf(sql_command, 
-      "CREATE TABLE %s("							/* DB_TABLE_NAME    */ 
-      "%s   	CHAR(%d)   NOT NULL," 	/* DB_COL_TIMESTAMP */
-      "%s     CHAR(%d)   NOT NULL," 	/* DB_COL_USER      */
-      "%s  		CHAR(%d)   NOT NULL,"  	/* DB_COL_MODNUM    */
-      "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT    */
-      , DB_TABLE_NAME
-      , DB_COL_TIMESTAMP, MAX_TIMESTAMP_LEN
-			, DB_COL_USER, MAX_FILENAME_LEN
-			, DB_COL_MODNUM, MAX_MODNUM_DIGITS
-			, DB_COL_RESULT, MAX_ACK_LEN);
+  // Create SQL statement 
+  char sql_command[MAX_SQL_COMMAND_LEN];
+  memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
+  sprintf(sql_command, 
+    "CREATE TABLE %s("			/* DB_TABLE_NAME    */ 
+    "%s   	CHAR(%d)   NOT NULL," 	/* DB_COL_TIMESTAMP */
+    "%s     	CHAR(%d)   NOT NULL," 	/* DB_COL_USER      */
+    "%s  	CHAR(%d)   NOT NULL,"  	/* DB_COL_MODNUM    */
+    "%s   	CHAR(%d)   NOT NULL);" 	/* DB_COL_RESULT    */
+    , DB_TABLE_NAME
+    , DB_COL_TIMESTAMP, MAX_TIMESTAMP_LEN
+    , DB_COL_USER, MAX_FILENAME_LEN
+    , DB_COL_MODNUM, MAX_MODNUM_DIGITS
+    , DB_COL_RESULT, MAX_ACK_LEN);
 
-	// Execute SQL statement
-	int return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
+  // Execute SQL statement
+  int return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
 
   // Check return code
-	if(return_code != SQLITE_OK){
+  if(return_code != SQLITE_OK){
     sqlite3_free(error_message);
     return 1;
-	}
+  }
 
   if (DEBUG) printf("Table %s created successfully\n", DB_TABLE_NAME);
   return 0;
@@ -92,9 +92,9 @@ int create_table(sqlite3 *db) {
 ** non-NULL. Returns 1 on error and 0 otherwise.
 */
 int insert_record(sqlite3 *db, char *user, char *module_num, char *result) {
-	// Declare error buffer and return code
-	char *error_message;
-	int return_code;
+  // Declare error buffer and return code
+  char *error_message;
+  int return_code;
 
   // Compute current time
   char timestamp[MAX_TIMESTAMP_LEN];
@@ -105,28 +105,28 @@ int insert_record(sqlite3 *db, char *user, char *module_num, char *result) {
       tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, 
       tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-	// Create SQL statement 
-	char sql_command[MAX_SQL_COMMAND_LEN];
-	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
-	sprintf(sql_command, 		
-			"INSERT INTO %s "
-			"(%s, %s, %s, %s) "
-			"VALUES ('%s', '%s', '%s', '%s'); "
-			, DB_TABLE_NAME 
-			, DB_COL_TIMESTAMP, DB_COL_USER, DB_COL_MODNUM, DB_COL_RESULT
-			, timestamp, user, module_num, result);
+  // Create SQL statement 
+  char sql_command[MAX_SQL_COMMAND_LEN];
+  memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
+  sprintf(sql_command, 		
+    "INSERT INTO %s "
+    "(%s, %s, %s, %s) "
+    "VALUES ('%s', '%s', '%s', '%s'); "
+    , DB_TABLE_NAME 
+    , DB_COL_TIMESTAMP, DB_COL_USER, DB_COL_MODNUM, DB_COL_RESULT
+    , timestamp, user, module_num, result);
 
-	// Execute SQL statement
-	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
-	if(return_code != SQLITE_OK) {
-		printf("SQL error: %s\n", error_message);
-		sqlite3_free(error_message);
-		return 1;
-	}
+  // Execute SQL statement
+  return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, 0, &error_message);
+  if(return_code != SQLITE_OK) {
+    printf("SQL error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
+  }
 
-	if (DEBUG) printf("Result <%s, %s, %s, %s> was recorded successfully\n", 
-      timestamp, user, module_num, result);
-	return 0;
+  if (DEBUG) printf("Result <%s, %s, %s, %s> was recorded successfully\n", 
+    timestamp, user, module_num, result);
+  return 0;
 }
 
 /*
@@ -143,27 +143,27 @@ int lookup_user(sqlite3 *db, char *user, char *response_buffer) {
     exit(EXIT_FAILURE);
   }
 
-	// Declare error buffer and return code
-	char *error_message;
-	int return_code;
+  // Declare error buffer and return code
+  char *error_message;
+  int return_code;
 
-	// Create SQL statement
-	char sql_command[MAX_SQL_COMMAND_LEN];
-	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
-	sprintf(sql_command,
-			"SELECT * FROM %s WHERE %s='%s'"
-			, DB_TABLE_NAME, DB_COL_USER, user);
+  // Create SQL statement
+  char sql_command[MAX_SQL_COMMAND_LEN];
+  memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
+  sprintf(sql_command,
+    "SELECT * FROM %s WHERE %s='%s'"
+    , DB_TABLE_NAME, DB_COL_USER, user);
 	
-	// Execute SQL statement
-	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, response_buffer, &error_message);
-	if (return_code != SQLITE_OK) {
-		printf("SQL error: %s\n", error_message);
-		sqlite3_free(error_message);
-		return 1;
-	}
+  // Execute SQL statement
+  return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, response_buffer, &error_message);
+  if (return_code != SQLITE_OK) {
+    printf("SQL error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
+  }
 
-	if (DEBUG) printf("Succesfully retrieved records for user %s\n", user);
-	return 0;
+  if (DEBUG) printf("Succesfully retrieved records for user %s\n", user);
+  return 0;
 }
 
 /*
@@ -180,27 +180,27 @@ int lookup_module(sqlite3 *db, char *module_num, char *response_buffer) {
     exit(EXIT_FAILURE);
   }
 
-	// Declare error buffer and return code
-	char *error_message;
-	int return_code;
+  // Declare error buffer and return code
+  char *error_message;
+  int return_code;
 
-	// Create SQL statement
-	char sql_command[MAX_SQL_COMMAND_LEN];
-	memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
-	sprintf(sql_command,
-			"SELECT * FROM %s WHERE %s='%s'"
-			, DB_TABLE_NAME, DB_COL_MODNUM, module_num);
+  // Create SQL statement
+  char sql_command[MAX_SQL_COMMAND_LEN];
+  memset(sql_command, 0, MAX_SQL_COMMAND_LEN);
+  sprintf(sql_command,
+    "SELECT * FROM %s WHERE %s='%s'"
+    , DB_TABLE_NAME, DB_COL_MODNUM, module_num);
 	
-	// Execute SQL statement
-	return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, response_buffer, &error_message);
-	if (return_code != SQLITE_OK) {
-		printf("SQL error: %s\n", error_message);
-		sqlite3_free(error_message);
-		return 1;
-	}
+  // Execute SQL statement
+  return_code = sqlite3_exec(db, sql_command, record_retrieval_callback, response_buffer, &error_message);
+  if (return_code != SQLITE_OK) {
+    printf("SQL error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
+  }
 
-	if (DEBUG) printf("Succesfully retrieved records for module %s\n", module_num);
-	return 0;
+  if (DEBUG) printf("Succesfully retrieved records for module %s\n", module_num);
+  return 0;
 }
 
 /*
@@ -219,7 +219,7 @@ int close_db(sqlite3 *db) {
  
 int example_db_main(int argc, char* argv[])
 {
-	// Declare handle to the database file
+  // Declare handle to the database file
   sqlite3 *db;
 
   // Open connection to the database
@@ -228,22 +228,22 @@ int example_db_main(int argc, char* argv[])
 
   // Create a submissions table 
   if (create_table(db)) {
-    //close_db(db);
-    //exit(EXIT_FAILURE);
+    close_db(db);
+    exit(EXIT_FAILURE);
   }
 	
-	// Insert a recrod into the table
-	insert_record(db, "pp5nv", "0", JDG_AOK);
+  // Insert a recrod into the table
+  insert_record(db, "pp5nv", "0", JDG_AOK);
 
-	// Look up the records for pp5nv
-	char response[MAX_SQL_RESPONSE_LEN];
-	memset(response, 0, MAX_SQL_RESPONSE_LEN);
-	lookup_user(db, "pp5nv", (char *)&response);
-	printf("Response: \n%s", response);
+  // Look up the records for pp5nv
+  char response[MAX_SQL_RESPONSE_LEN];
+  memset(response, 0, MAX_SQL_RESPONSE_LEN);
+  lookup_user(db, "pp5nv", (char *)&response);
+  printf("Response: \n%s", response);
 	
-	// Close the db connection and clean up
-	if (close_db(db))
-		return 1;
+  // Close the db connection and clean up
+  if (close_db(db))
+    return 1;
 
-	return 0;
+  return 0;
 }
