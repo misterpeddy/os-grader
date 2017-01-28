@@ -8,7 +8,7 @@
 
 #define VERBOSE 1
 
-#define server_address   "104.199.193.162"
+#define server_address   "35.185.24.113"
 //#define server_address   "localhost"
 #define port_number       31337
 

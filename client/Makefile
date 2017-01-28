@@ -3,7 +3,7 @@ CFLAGS=-w
 
 all: client
 
-client: client.c
+client: client.c client.h
 	$(CC) $(CFLAGS) $? -o $@
 
 clean:
