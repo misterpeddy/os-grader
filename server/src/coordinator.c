@@ -671,20 +671,15 @@ void validate_dirs() {
 
   // Make sure submissions directory exists
   if ((stat(SUB, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
-    mkdir(SUB, S_IRWXU | S_IRWXG);
+    if (mkdir(SUB, S_IRWXU | S_IRWXG))
+      fatal_error("Cannot create %s directory - NON_PRIV_USR (%d) is most likely an invalid uid"
+          , SUB, NON_PRIV_USR);
   }
+
   // Make sure sandbox directory exists
   if ((stat(SANDBOX, &root_stat) != 0) || !S_ISDIR(root_stat.st_mode)) {
     mkdir(SANDBOX, S_IRWXU | S_IRWXG);
   }
-
-  // Make sure USR_NON_PRIV is a valid uid
-  char command[MAX_COMMAND_LEN];
-  sprintf(command, "getent passwd %d", NON_PRIV_USR);
-  printf("Checking that uid %d exists: ", NON_PRIV_USR);
-  fflush(stdout);
-  if (system(command))
-    fatal_error("NON_PRIV_USR does not have a valid uid (%d). Please fix in macros", NON_PRIV_USR);
 
   // Restore root privilege
   seteuid(0);
