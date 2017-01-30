@@ -228,18 +228,21 @@ int send_solution(int socket_fd, char *module_num) {
 
   // Send begining of solution ack
   send(socket_fd, BEG_SOL, strlen(BEG_SOL), 0);
+  if (VERBOSE) printf("Sent BEG_SOL ack\n");
 
   // Send file header
   char buffer[TCP_PACKET_SIZE];
   memset(buffer, 0, TCP_PACKET_SIZE);
-  sprintf(buffer, "%s%s%s%s%d", HEADER_PREFIX, ARG_DELIM, module_num,
-      ARG_DELIM, bytes_remaining);
+  sprintf(buffer, "%s%s%s%s%d%s", HEADER_PREFIX, ARG_DELIM, module_num,
+      ARG_DELIM, bytes_remaining, ARG_DELIM);
   send(socket_fd, buffer, strlen(buffer), 0);
+  if (VERBOSE) printf("Sent file header [%s]\n", buffer);
 
   // Wait for header received ack
   memset(buffer, 0, TCP_PACKET_SIZE);
   recv(socket_fd, buffer, strlen(HDR_AOK), 0);
   if (strcmp(buffer, HDR_AOK)) return 1;
+  if (VERBOSE) printf("Received HDR_AOK\n");
 
   // Send file content
   int bytes_read;
@@ -248,6 +251,7 @@ int send_solution(int socket_fd, char *module_num) {
     send(socket_fd, buffer, bytes_read, 0);
     bytes_remaining -= bytes_read;
   }
+  if (VERBOSE) printf("Sent file content\n");
 
   fclose(file);
 
@@ -259,6 +263,7 @@ int send_solution(int socket_fd, char *module_num) {
     return 1;
   }
 
+  if (VERBOSE) printf("Received FIL_AOK ack\n");
   return 0;
 }
 
