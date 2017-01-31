@@ -95,7 +95,7 @@ int listen_for_requests(int listen_queue_socket) {
   
   // Listen for new connections
   if (listen(listen_queue_socket, MAX_WAITING_CONNECTIONS) < 0) {
-    printf("Could not listen on port %d - Exiting\n", PORT);
+    printf("Could not listen on port %d\n", PORT);
     return -1;
   }
 

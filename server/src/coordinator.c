@@ -732,7 +732,7 @@ int run_server() {
     fatal_error("Could not initiazlie mutex lock");
 
   // Set up initial socket for listen queue
-  if ((listen_queue_socket = set_up_server) < 0) 
+  if ((listen_queue_socket = set_up_server()) < 0) 
     exit(EXIT_FAILURE);
 
   // Init and allocate enough space to hold the raw request
