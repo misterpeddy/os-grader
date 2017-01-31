@@ -13,9 +13,10 @@ diff master/instructor_0_sol.c instructor_0_sol.c > diff.txt
 FILESIZE=$(stat -c%s "diff.txt")
 if [ "$FILESIZE" -ne "$ZERO" ] 
 then
-  echo This run failed
+  echo "Failure" >> $LOG_FILE
   exit 0
 fi
+echo "Success" >> $LOG_FILE
 
 # Clean up for next run
 rm -f diff.txt instructor_0_sol.c
