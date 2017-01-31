@@ -2,6 +2,9 @@
 ZERO=0
 COUNTER=0
 MAX=10
+LOG_FILE=logfile.txt
+
+
 while [ $COUNTER -lt $MAX ]; do
   printf "****** Run #%d *********\n" "$COUNTER" 
 
