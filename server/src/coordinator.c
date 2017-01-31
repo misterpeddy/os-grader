@@ -732,7 +732,8 @@ int run_server() {
     fatal_error("Could not initiazlie mutex lock");
 
   // Set up initial socket for listen queue
-  listen_queue_socket = set_up_server();
+  if ((listen_queue_socket = set_up_server) < 0) 
+    exit(EXIT_FAILURE);
 
   // Init and allocate enough space to hold the raw request
   Request request;
@@ -745,15 +746,17 @@ int run_server() {
   while (1) {
     
     // Block and listen for connections - upon receipt, move connection to new socket
-    connection_socket = listen_for_requests(listen_queue_socket);
+    if ((connection_socket = listen_for_requests(listen_queue_socket)) >= 0) {
 
-    request.socket_fd = connection_socket;
+      // Set request's socket fd
+      request.socket_fd = connection_socket;
 
-    // Let the handler receive request data
-    init_request(&request);
-    receive_request(&request);
-    handle_request(&request);
-    destruct_request(&request);
+      // Let the handler receive request data
+      init_request(&request);
+      receive_request(&request);
+      handle_request(&request);
+      destruct_request(&request);
+    }
   }
 }
 

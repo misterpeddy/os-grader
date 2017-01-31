@@ -56,6 +56,7 @@ char *generate_filename(char *newfile, char *user, char *module_num) {
 
 /*
 ** Sets up listen queue socket and returns its file descriptor
+** If could not bind socket, returns -1
 */
 int set_up_server() {
   
@@ -77,7 +78,7 @@ int set_up_server() {
            sizeof(server_address)) < 0) {
     printf("Cannot bind socket\n");
     close(listen_queue_socket);
-    return 1;
+    return -1;
   }
   if (DEBUG) printf("Created and bound socket\n\n");
   return listen_queue_socket;
@@ -95,7 +96,7 @@ int listen_for_requests(int listen_queue_socket) {
   // Listen for new connections
   if (listen(listen_queue_socket, MAX_WAITING_CONNECTIONS) < 0) {
     printf("Could not listen on port %d - Exiting\n", PORT);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   // Accept new connections, move them to connection_socket
