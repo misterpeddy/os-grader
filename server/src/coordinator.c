@@ -431,7 +431,7 @@ void handle_request(Request *request) {
     strcpy(&judge_bin[strlen(BIN_ROOT)], JUDGE);
 
     // Run the judge binary
-    if (DEBUG) printf("\nStarting Judge\n", judge_bin);
+    if (DEBUG) printf("\nStarting Judge\n");
     execv(judge_bin, judge->exec_args);
     perror("exec failure");
     exit(EXIT_FAILURE);
